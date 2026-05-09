@@ -5,3 +5,7 @@ node_modules/
 .env*.local
 
 .vercel
+
+# SwiftPM / macOS app build artifacts
+apps/macos/**/.build/
+apps/macos/**/dist/
