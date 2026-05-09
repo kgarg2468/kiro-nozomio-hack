@@ -17,3 +17,4 @@ dist/
 # SwiftPM / macOS app build artifacts
 apps/macos/**/.build/
 apps/macos/**/dist/
+.gstack/
