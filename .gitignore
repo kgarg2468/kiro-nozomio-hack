@@ -1,0 +1,8 @@
+node_modules/
+target/
+dist/
+.next/
+.turbo/
+.cache/
+.DS_Store
+.kiro/
