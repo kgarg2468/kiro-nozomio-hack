@@ -56,6 +56,12 @@ const employeeStatus = v.union(
 );
 
 export default defineSchema({
+  brain_snapshots: defineTable({
+    key: v.string(),
+    state: v.any(),
+    updated_at: v.number()
+  }).index("by_key", ["key"]),
+
   employees: defineTable({
     external_id: v.string(),
     name: v.string(),

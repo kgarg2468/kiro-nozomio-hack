@@ -15,20 +15,20 @@ export async function fetchHyperspellBrainPacket(
   if (!key) return fixtureHyperspellPacket("fallback");
 
   try {
-    const query = new URLSearchParams({
-      q: `Onboarding context for ${employeeId}: Slack decisions, Notion docs, GitHub PR history, owners, guardrails`
-    });
-    if (userId) query.set("user_id", userId);
-
     const headers: Record<string, string> = {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json"
     };
     if (userId) headers["X-As-User"] = userId;
 
-    const res = await fetch(`${HYPERSPELL_BASE_URL}/v1/search?${query}`, {
-      method: "GET",
+    const res = await fetch(`${HYPERSPELL_BASE_URL}/memories/query`, {
+      method: "POST",
       headers,
+      body: JSON.stringify({
+        query: `Onboarding context for ${employeeId}: Slack decisions, Notion docs, GitHub PR history, owners, guardrails`,
+        answer: true,
+        options: { max_results: 8 }
+      }),
       cache: "no-store"
     });
 

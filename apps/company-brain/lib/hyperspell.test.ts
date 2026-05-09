@@ -24,9 +24,12 @@ describe("fetchHyperspellBrainPacket", () => {
     expect(packet.status).toBe("connected");
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/v1/search?");
-    expect(url).toContain("q=");
-    expect(url).not.toContain("user_id=");
+    expect(url).toBe("https://api.hyperspell.com/memories/query");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      answer: true,
+      options: { max_results: 8 }
+    });
     expect(init.headers).toMatchObject({
       Authorization: "Bearer test-key",
       "Content-Type": "application/json"
@@ -47,8 +50,7 @@ describe("fetchHyperspellBrainPacket", () => {
 
     await fetchHyperspellBrainPacket("sam");
 
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("user_id=sandbox%3Aperson%40example.com");
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.headers).toMatchObject({
       "X-As-User": "sandbox:person@example.com"
     });

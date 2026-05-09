@@ -58,6 +58,190 @@ export const dashboardState = query({
   }
 });
 
+export const brainSnapshot = query({
+  args: { key: v.string() },
+  handler: async (ctx, args) => {
+    const snapshot = await ctx.db
+      .query("brain_snapshots")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .first();
+    if (!snapshot) return null;
+    return { state: snapshot.state, updated_at: snapshot.updated_at };
+  }
+});
+
+export const upsertDemoState = mutation({
+  args: {
+    key: v.string(),
+    state: v.any(),
+    updated_at: v.optional(v.number())
+  },
+  handler: async (ctx, args) => {
+    const now = args.updated_at ?? Date.now();
+    const state = args.state as any;
+    const snapshot = await ctx.db
+      .query("brain_snapshots")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .first();
+    if (snapshot) {
+      await ctx.db.patch(snapshot._id, { state, updated_at: now });
+    } else {
+      await ctx.db.insert("brain_snapshots", { key: args.key, state, updated_at: now });
+    }
+
+    for (const employee of arrayOf(state.employees)) {
+      await upsertByIndex(ctx, "employees", "by_external_id", employee.id, {
+        external_id: employee.id,
+        name: employee.name,
+        email: employee.email,
+        role: employee.role,
+        github: employee.github,
+        status: employee.status,
+        palette: employee.palette,
+        created_at: now
+      });
+    }
+
+    if (state.profile) {
+      await upsertByIndex(ctx, "onboarding_profiles", "by_employee", state.profile.employeeId, {
+        employee_external_id: state.profile.employeeId,
+        headline: state.profile.headline,
+        strengths: arrayOf(state.profile.strengths),
+        weak_spots: arrayOf(state.profile.weakSpots),
+        known_modules: arrayOf(state.profile.knownModules),
+        source_coverage: state.profile.sourceCoverage,
+        context_risk_score: state.profile.contextRiskScore,
+        summary: state.profile.summary,
+        updated_at: now
+      });
+    }
+
+    for (const source of arrayOf(state.brainSources)) {
+      await upsertByIndex(ctx, "brain_sources", "by_provider", source.provider, {
+        provider: source.provider,
+        status: source.status,
+        messages: source.counts?.messages,
+        docs: source.counts?.docs,
+        prs: source.counts?.prs,
+        repos: source.counts?.repos,
+        crm: source.counts?.crm,
+        emails: source.counts?.emails,
+        meetings: source.counts?.meetings,
+        decisions: source.counts?.decisions,
+        summary: source.summary,
+        updated_at: now
+      });
+    }
+
+    for (const citation of arrayOf(state.citations)) {
+      await upsertByIndex(ctx, "source_citations", "by_external_id", citation.id, {
+        external_id: citation.id,
+        source_type: citation.sourceType,
+        title: citation.title,
+        url: citation.url,
+        snippet: citation.snippet,
+        confidence: citation.confidence,
+        freshness: citation.freshness,
+        live: citation.live,
+        provider: providerForCitation(citation),
+        decision_external_id: citation.decisionId,
+        thread_external_id: citation.threadId,
+        capture_method: citation.captureMethod,
+        captured_at: citation.capturedAt,
+        decision_role: citation.decisionRole,
+        created_at: now
+      });
+    }
+
+    for (const decision of arrayOf(state.decisions)) {
+      await upsertByIndex(ctx, "decisions", "by_external_id", decision.id, {
+        external_id: decision.id,
+        title: decision.title,
+        summary: decision.summary,
+        status: decision.status,
+        final_recommendation: decision.finalRecommendation,
+        source_citation_external_ids: arrayOf(decision.sourceCitationIds),
+        owner: decision.owner,
+        freshness: decision.freshness,
+        updated_at: now
+      });
+    }
+
+    if (state.task) {
+      await upsertByIndex(ctx, "tasks", "by_external_id", state.task.id, {
+        external_id: state.task.id,
+        title: state.task.title,
+        issue_id: state.task.issueId,
+        owner: state.task.owner,
+        matched_employee_external_id: state.task.matchedEmployeeId,
+        status: state.task.status,
+        progress: state.task.progress,
+        why_matched: arrayOf(state.task.whyMatched),
+        files: arrayOf(state.task.files),
+        updated_at: now
+      });
+    }
+
+    for (const agent of arrayOf(state.agents)) {
+      await upsertByIndex(ctx, "agent_sessions", "by_external_id", agent.id, {
+        external_id: agent.id,
+        kind: agent.kind,
+        display_name: agent.displayName,
+        owner_employee_external_id: agent.ownerEmployeeId,
+        current_plan: agent.currentPlan,
+        status: agent.status,
+        updated_at: now
+      });
+    }
+
+    for (const event of arrayOf(state.contextEvents)) {
+      await upsertByIndex(ctx, "context_events", "by_external_id", event.id, {
+        external_id: event.id,
+        stage: event.stage,
+        title: event.title,
+        body: event.body,
+        citation_external_ids: arrayOf(event.citationIds),
+        created_at: now
+      });
+    }
+
+    for (const guardrail of arrayOf(state.guardrails)) {
+      await upsertByIndex(ctx, "guardrails", "by_external_id", guardrail.id, {
+        external_id: guardrail.id,
+        title: guardrail.title,
+        severity: guardrail.severity,
+        rule: guardrail.rule,
+        recommendation: guardrail.recommendation,
+        citation_external_ids: arrayOf(guardrail.citationIds),
+        active: guardrail.active,
+        updated_at: now
+      });
+    }
+
+    if (state.readiness) {
+      await upsertByIndex(ctx, "pr_readiness_reports", "by_external_id", state.readiness.id, {
+        external_id: state.readiness.id,
+        task_external_id: state.readiness.taskId,
+        verdict: state.readiness.verdict,
+        summary: state.readiness.summary,
+        tests: arrayOf(state.readiness.tests),
+        risk: state.readiness.risk,
+        recommendation: state.readiness.recommendation,
+        citation_external_ids: arrayOf(state.readiness.citationIds),
+        created_at: now
+      });
+    }
+
+    return {
+      employees: arrayOf(state.employees).length,
+      brainSources: arrayOf(state.brainSources).length,
+      citations: arrayOf(state.citations).length,
+      decisions: arrayOf(state.decisions).length,
+      events: arrayOf(state.contextEvents).length
+    };
+  }
+});
+
 export const upsertContextEvent = mutation({
   args: {
     external_id: v.string(),
@@ -94,6 +278,42 @@ export const upsertContextEvent = mutation({
     });
   }
 });
+
+async function upsertByIndex(
+  ctx: any,
+  table: string,
+  index: string,
+  key: string,
+  value: Record<string, unknown>
+) {
+  const patch = compact(value);
+  const existing = await ctx.db
+    .query(table)
+    .withIndex(index, (q: any) => q.eq(Object.keys(value)[0], key))
+    .first();
+  if (existing) {
+    await ctx.db.patch(existing._id, patch);
+    return existing._id;
+  }
+  return await ctx.db.insert(table, patch);
+}
+
+function arrayOf(value: unknown): any[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function compact(value: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+}
+
+function providerForCitation(citation: any) {
+  if (!citation.live) return "fixture";
+  if (citation.sourceType === "nia" || String(citation.id).startsWith("nia_")) return "nia";
+  if (citation.sourceType === "hyperspell" || String(citation.id).startsWith("hyperspell_")) {
+    return "hyperspell";
+  }
+  return "fixture";
+}
 
 export const recordInboundEmailCapture = mutation({
   args: {
