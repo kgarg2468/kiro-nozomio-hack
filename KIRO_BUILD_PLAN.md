@@ -2,16 +2,19 @@
 
 ## One-Line Pitch
 
-Kiro is the company brain for coding agents: it turns scattered company context into decision trails agents can use before writing code, then watches live work across people, agents, and uncommitted git diffs to prevent destructive PR blast radius.
+Kiro is a live company office for people and coding agents: it shows what everyone is working on, watches local uncommitted work before anyone commits, and warns teammates about future merge conflicts or PR blast radius while there is still time to coordinate.
 
 ## Product Bridge: Company Legible To AI
 
-Kiro is not another connector hub. Hyperspell captures company memory, Nia grounds code context, and Kiro synthesizes both into decision trails that make agents behave like they were in the room when the decision happened.
+Kiro is not another connector hub. At the top level it is the shared operational room for engineering work: employees can see colleagues, agents, tasks, risky local diffs, and upcoming collisions in a pixel office before those changes ever become commits or PRs.
+
+Hyperspell captures company memory, Nia grounds code context, and Kiro uses both to make those live warnings explainable. The decision-trail layer tells people and agents **why** a local change is risky, which prior decision it conflicts with, and what coordination path avoids the blast radius.
 
 The bridge between onboarding, people management, and merge-conflict prevention is the **context capture window**:
 
 - If a customer complaint starts in CRM/email, gets debated in Slack, finalized in a meeting, codified in Notion, and implemented in PRs, Kiro shows that as one decision trail.
 - If context happened outside captured sources, Kiro marks it as a capture gap instead of pretending certainty.
+- People see the same live office state their agents see: who owns which task, what worktree is changing, which files or contracts are hot, and who needs to coordinate.
 - Coding agents receive these decision trails during `kiro_plan` and `kiro_checkpoint`, so guardrails can cite why a change is safe, risky, or blocked.
 
 ## Hackathon Context
@@ -34,26 +37,32 @@ The bridge between onboarding, people management, and merge-conflict prevention 
 | Criterion | Weight | How Kiro Wins |
 | --- | ---: | --- |
 | Cross-source synthesis | 30% | Combines Hyperspell company sources, GitHub issues/PRs, Nia codebase context, and live git diffs into decision trails instead of disconnected search results. |
-| Real work, not just answers | 25% | Kiro actively blocks/redirects risky coding work before commit or PR. |
+| Real work, not just answers | 25% | Kiro actively detects risky local work, notifies the right people/agents before commit, and blocks or redirects unsafe coding-agent changes. |
 | Hyperspell integration depth | 25% | Hyperspell is the company memory source for Slack/Notion/GitHub/company decisions; removing it makes guardrails and citations collapse. |
-| Demo and presentation | 10% | Pixel office makes the invisible company brain visible; live conflict alert is easy to understand in seconds. |
+| Demo and presentation | 10% | Pixel office makes team activity visible at a glance; live local conflict alerts are easy to understand in seconds. |
 | Judge personal rating | 10% | Strong CTO pain: prevent giant destructive PRs, conflicting agent work, and lost team context. |
 
 ## Product Scope
 
-Build a demo-grade but architecturally real system with three surfaces:
+Build a demo-grade but architecturally real system with four surfaces:
 
-1. **Company Brain Onboarding**
+1. **Pixel Office Activity View**
+   - Kiro shows employees, coding agents, tasks, and work status in one shared office.
+   - Employees can see what their colleagues and agents are actively working on without asking for a status update.
+   - The office is the first-screen signal: who is focused, blocked, overlapping, or at risk of causing blast radius.
+
+2. **Company Brain Onboarding**
    - Kiro creates an employee profile from GitHub, issues, PRs, company docs, and codebase context.
    - Shows strengths, known modules, onboarding status, current task, owners, and a context-risk score.
    - Shows which company sources are inside the context capture window and which gaps could hide relevant decisions.
 
-2. **Live Blast-Radius Monitor**
+3. **Live Blast-Radius Monitor**
    - Kiro watches uncommitted local git diffs from multiple worktrees/agents.
-   - If two people or agents are working on the same task, file, schema, API contract, or risky surface, Kiro warns both before commit or PR.
+   - If two people or agents are working on the same task, file, schema, API contract, or risky surface, Kiro warns both before either person commits.
+   - This is the core magic: Kiro can predict a future merge conflict or blast-radius event from local work that has not landed anywhere yet.
    - It also warns on destructive operations such as broad deletes, unsafe rebases, schema churn, and forbidden stack choices.
 
-3. **Coding-Agent MCP Plugin**
+4. **Coding-Agent MCP Plugin**
    - Codex/Claude Code can join Kiro, publish plans, checkpoint diffs, receive guardrails, and pause when a blocking conflict appears.
    - Checkpoints return relevant decision trails, guardrails, citations, and capture gaps alongside merge/conflict risk.
 
@@ -61,24 +70,24 @@ Build a demo-grade but architecturally real system with three surfaces:
 
 Opening line:
 
-> Kiro is the company brain for coding agents. It stops engineers and agents from creating massive PR blast radius before the code is ever pushed.
+> Kiro is a live office for people and coding agents. It shows what everyone is doing and catches future merge conflicts from local work before anyone commits.
 
 Three-minute flow:
 
-1. Open the pixel office dashboard.
-2. Click the new employee, Sam.
-3. Show Sam's profile being assembled from GitHub, issues, PRs, Hyperspell company context, and Nia codebase context.
+1. Open the pixel office dashboard and show employees/agents actively working.
+2. Point out that this is live local activity, not just PRs after the damage is done.
+3. Click Sam and show his onboarding profile assembled from GitHub, issues, PRs, Hyperspell company context, and Nia codebase context.
 4. Show the context capture window: CRM/email originated the customer problem, Slack debated it, a meeting finalized it, Notion codified it, PR/Nia show the implementation pattern, and uncaptured side channels are marked as gaps.
 5. Show Sam working with a coding agent.
 6. The coding agent proposes a risky fixed sleep.
 7. Kiro redirects the agent using the synthesized retry-policy decision trail, not a generic search result.
-8. Show another teammate/agent working on overlapping uncommitted changes.
-9. Kiro detects overlap from live git diffs before either person commits and recommends a unified spec or ownership split.
+8. Show another teammate/agent working on overlapping uncommitted local changes.
+9. Kiro detects the future collision before either person commits and recommends a unified spec or ownership split.
 10. Show PR readiness with citations.
 
 Close:
 
-> Hyperspell ingests the company. Nia indexes the code. Kiro verifies engineering work before it becomes a destructive PR.
+> Hyperspell ingests the company. Nia indexes the code. Kiro watches the live office and prevents local work from becoming a destructive PR.
 
 ## Architecture
 
