@@ -13,3 +13,7 @@ dist/
 *.local
 !.env.local.example
 !**/.env.local.example
+
+# SwiftPM / macOS app build artifacts
+apps/macos/**/.build/
+apps/macos/**/dist/
