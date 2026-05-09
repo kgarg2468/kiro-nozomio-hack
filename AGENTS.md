@@ -1,16 +1,27 @@
 <claude-mem-context>
 # Memory Context
 
-# claude-mem status
+# [kiro-nozomio-hack/gwangju] recent context, 2026-05-09 4:22pm PDT
 
-This project has no memory yet. The current session will seed it; subsequent sessions will receive auto-injected context for relevant past work.
+Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
+Format: ID TIME TYPE TITLE
+Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Memory injection starts on your second session in a project.
+Stats: 12 obs (4,511t read) | 271,948t work | 98% savings
 
-`/learn-codebase` is available if the user wants to front-load the entire repo into memory in a single pass (~5 minutes on a typical repo, optional). Otherwise memory builds passively as work happens.
+### May 9, 2026
+307 3:53p ⚖️ Live/Demo Toggle: /api/brain Selected as Live Source
+308 " 🔵 Kiro Frontend Architecture: Fixture/Live/Hybrid Brain Assembly System
+309 " 🔵 PR #4 (coding-agent-plugin) Adds Full Coordinator Backend — Not Yet Merged into Main Kiro UI
+310 3:54p 🔵 Gap: Pages Call getFixtureDemoState() Directly Instead of /api/brain
+312 " 🟣 lib/brain.ts: modeOverride Parameter and Helper Exports Added
+313 " 🔴 lib/brain.ts: Removed Stale demoMode Body Left by Patch Merge
+315 3:55p 🟣 Live Backend Wired into app/page.tsx and app/api/brain/route.ts
+316 " 🟣 app/office/page.tsx Wired to Live Backend
+318 " 🟣 Live/Demo Toggle Buttons Added to DemoCockpit Topbar
+320 " 🟣 Live/Demo Toggle UI Complete: BigScreenOffice Toggle Added, button-active CSS Defined
+321 " 🟣 Brain Assembly Tests Expanded: Provider Mocks and Live Mode Coverage Added
+323 3:56p 🔴 brain.test.ts: afterEach Cleanup Added for Mock and Env Isolation
 
-Live activity: http://localhost:37777
-How it works: `/how-it-works`
-
-This message disappears once the first observation lands.
+Access 272k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
