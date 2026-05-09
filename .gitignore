@@ -3,6 +3,7 @@ node_modules/
 *.tsbuildinfo
 .env.local
 .env*.local
+.kiro/
 
 .vercel
 

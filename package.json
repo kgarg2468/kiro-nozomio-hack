@@ -6,11 +6,12 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "next build",
-    "typecheck": "tsc --noEmit --pretty false",
-    "test": "vitest run"
+    "build": "pnpm -r --filter './packages/**' build && next build",
+    "typecheck": "pnpm -r --filter './packages/**' typecheck && tsc --noEmit --pretty false",
+    "test": "vitest run && pnpm -r --filter './packages/**' test"
   },
   "dependencies": {
+    "@kiro/senior-shared": "workspace:*",
     "@tailwindcss/postcss": "^4.3.0",
     "@vitejs/plugin-react": "^5.1.2",
     "class-variance-authority": "^0.7.1",
@@ -30,7 +31,16 @@
     "@types/node": "^24.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "node-gyp": "^12.3.0",
+    "picomatch": "^4.0.4",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild",
+      "sharp"
+    ]
   }
 }
