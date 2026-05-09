@@ -1,6 +1,13 @@
 import { DemoCockpit } from "@/components/demo-cockpit";
-import { getFixtureDemoState } from "@/lib/demo-data";
+import { assembleBrainForEmployee, demoMode, liveSource } from "@/lib/brain";
 
-export default function HomePage() {
-  return <DemoCockpit initialState={getFixtureDemoState()} />;
+interface HomePageProps {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const params = await searchParams;
+  const source = liveSource(params?.source);
+  const state = await assembleBrainForEmployee("sam", demoMode(params?.mode), source);
+  return <DemoCockpit initialState={state} liveSource={source} />;
 }

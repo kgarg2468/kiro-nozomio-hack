@@ -207,6 +207,12 @@ canvas {
   color: #eaffff;
 }
 
+.button-active {
+  border-color: rgba(139, 226, 139, 0.58);
+  background: rgba(139, 226, 139, 0.13);
+  color: #ecffec;
+}
+
 .button-danger {
   border-color: rgba(255, 95, 122, 0.48);
   color: #ffe6ea;

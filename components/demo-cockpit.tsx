@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Monitor, Play, RotateCcw, UserRound } from "lucide-react";
+import type { LiveSource } from "@/lib/brain";
 import type { DemoStage, DemoState } from "@/lib/types";
 import { BrainAssembly } from "@/components/brain-assembly";
 import { CharacterDossier } from "@/components/character-dossier";
@@ -21,7 +22,13 @@ const STAGES: Array<{ id: DemoStage; label: string; caption: string }> = [
   { id: "readiness", label: "PR Ready", caption: "review packet" }
 ];
 
-export function DemoCockpit({ initialState }: { initialState: DemoState }) {
+export function DemoCockpit({
+  initialState,
+  liveSource = "providers"
+}: {
+  initialState: DemoState;
+  liveSource?: LiveSource;
+}) {
   const [stage, setStage] = useState<DemoStage>("assemble");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -63,9 +70,40 @@ export function DemoCockpit({ initialState }: { initialState: DemoState }) {
         <div className="stage-control">
           <span className="status-chip">
             <span className="status-dot" />
-            {initialState.mode} mode
+            {initialState.mode === "live" && liveSource === "convex"
+              ? "convex live"
+              : `${initialState.mode} mode`}
           </span>
-          <a className="button" href="/office">
+          <a
+            aria-current={
+              initialState.mode === "live" && liveSource === "providers" ? "page" : undefined
+            }
+            className={`button ${
+              initialState.mode === "live" && liveSource === "providers" ? "button-active" : ""
+            }`}
+            href="/?mode=live&source=providers"
+          >
+            Live data
+          </a>
+          <a
+            aria-current={
+              initialState.mode === "live" && liveSource === "convex" ? "page" : undefined
+            }
+            className={`button ${
+              initialState.mode === "live" && liveSource === "convex" ? "button-active" : ""
+            }`}
+            href="/?mode=live&source=convex"
+          >
+            Convex live
+          </a>
+          <a
+            aria-current={initialState.mode === "fixture" ? "page" : undefined}
+            className={`button ${initialState.mode === "fixture" ? "button-active" : ""}`}
+            href="/?mode=fixture"
+          >
+            Demo data
+          </a>
+          <a className="button" href={`/office?mode=${initialState.mode}&source=${liveSource}`}>
             <Monitor size={15} /> Big screen
           </a>
           <button className="button" onClick={() => setSelectedId("sam")}>
