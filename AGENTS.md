@@ -1,37 +1,15 @@
 <claude-mem-context>
 # Memory Context
 
-# [kiro-nozomio-hack/baku] recent context, 2026-05-09 3:46pm PDT
+# [kiro-nozomio-hack/baku] recent context, 2026-05-09 4:14pm PDT
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 42 obs (13,679t read) | 1,016,317t work | 99% savings
+Stats: 50 obs (17,229t read) | 190,766t work | 91% savings
 
 ### May 9, 2026
-218 3:30p 🔵 kiro-ai-monorepo Project Structure
-219 " 🔵 Environment Variable Layout: Root .env.local, Missing apps/company-brain/.env.local
-220 " 🟣 Convex Backend Deployed with 7 Environment Variables
-221 " 🟣 Vercel Project ptlnextdoor Linked and Production Env Vars Configured
-222 " 🔴 Vercel Remote Build Fails: pnpm ERR_INVALID_THIS from npm Registry
-223 " 🔴 next.config.ts Monorepo Turbopack Root Conflicts with Vercel outputFileTracingRoot
-224 3:31p 🔵 vercel build Double-Path Bug: outputFileTracingRoot Causes Doubled .next Lookup
-225 " ✅ Added engines.node=22.x to apps/company-brain/package.json to Fix Vercel Remote Build
-230 " 🔵 engines.node=22.x Did Not Change Vercel Build Machine Node Version
-235 3:32p 🔵 Vercel Remote Deploy Blocked: pnpm install Fails on Node 24 — Prebuilt Deploy is Required Path Forward
-242 3:34p 🟣 @kiro/company-brain Successfully Deployed to Production at ptlnextdoor.vercel.app
-243 " 🔵 turbopack.root=appRoot Breaks Local Dev; turbopack.root=workspaceRoot Breaks vercel build Prebuilt
-245 " 🔴 vercel build Prebuilt Unblocked: next Added to Root devDeps + Root vercel.json Created
-247 " 🟣 Prebuilt Deploy Pipeline Working: vercel build + vercel deploy --prebuilt Both Succeed
-252 3:35p 🟣 ptlnextdoor.com Live: Domain Aliases Set, HTTP 200 Confirmed from www.ptlnextdoor.com
-256 3:36p 🔵 Production /api/brain Returns Hybrid Mode: Hyperspell and Nia Both Error, Fixture Fallback Active
-257 " 🔴 next.config.ts turbopack.root Reverted to workspaceRoot Breaks Local Dev Server
-258 3:39p 🔵 PixelAgents Full-Screen Panel Bug Identified
-259 " 🔵 Root Cause: selectedId/onSelect Not Threaded to PixelOfficeFrame
-260 " 🔴 PixelAgents Fullscreen Click Fix: Portal Sidebar Now Interactive
-261 " 🔵 Duplicate React Keys in Context Stream / Citations
-262 " 🔵 Playwright Headless Tests Cannot Trigger React State via Portal Button Clicks
 263 3:40p 🔴 PixelOffice Portal: Default Selected Entity + Progress Bar in Each Card
 264 " 🔵 SelectedPortal Fallback Approach Not Reflected in Headless Playwright Tests
 265 3:41p 🔵 SelectedPortal WAS Rendering — Playwright Case-Sensitivity Error in Tests
@@ -52,6 +30,36 @@ Stats: 42 obs (13,679t read) | 1,016,317t work | 99% savings
 280 " ✅ TypeScript Typecheck Passed and All Changes Staged for Commit
 281 3:45p ✅ Vercel Deployment Config Committed and Pushed to GitHub
 282 " ✅ Push to GitHub Confirmed — Branch aayu22809/baku Fully Synced
+283 3:46p 🔵 AGENTS.md Modified Again After Commit
+284 " 🔵 Remote main Has New Commits Not Yet Merged into aayu22809/baku
+285 3:47p 🔵 Massive Structural Divergence Between aayu22809/baku and origin/main
+286 " 🔴 Merge Conflicts Resolved: .gitignore and AGENTS.md After Merging origin/main
+287 " 🔵 Monorepo Root package.json Reveals Full kiro-ai-monorepo Structure
+288 " ✅ Pre-Merge-Commit Validation: Next.js Build and Swift Tests Running Concurrently
+289 3:48p 🔵 Both Next.js Build and Swift Tests Passed — Merge Ready to Commit
+290 " ✅ Merge Commit 53832c0 Created — origin/main Merged into aayu22809/baku
+291 " ✅ Merge Commit 53832c0 Pushed — Branch Fully Synced with Main's KiroTaskTray PR
+292 3:49p ✅ Stash Cleaned Up and gstack QA Skill Loaded for Next Phase
+293 " 🔵 gstack QA Starting in Diff-Aware Mode — 7 Commits Ahead of main Across 200+ Files
+294 3:50p 🔵 gstack Browse Binary Located Globally at ~/.codex/skills/gstack
+295 " 🔵 company-brain App Is Live at https://www.ptlnextdoor.com on Vercel
+296 " 🔵 Production /api/brain: hyperspell and nia Sources Failing — Only Fixture Connected
+297 " 🔵 gstack browse snapshot -a Flag Conflicts with Multiple Element Selectors on ptlnextdoor.com
+298 3:51p 🔵 Playwright Not Available in kiro-nozomio-hack Workspace — QA Browser Script Failed
+299 " 🔵 Playwright QA Found via @playwright/test in apps/company-brain — All Pages Pass Clean
+300 3:52p 🔵 QA Found 7 Unclickable Buttons on Homepage — Click Timeouts on Key UI Components
+301 " 🔵 Vercel Production Deployment Details for ptlnextdoor — 806KB Lambda Bundles on iad1
+302 3:53p 🔵 QA Results Read: Button Click Failures Caused by Sam Modal Overlay — App Content Healthy
+303 " 🔴 Vercel Local Build Failed: Next.js Not in Root package.json — Fixed by Adding to devDependencies
+304 " 🔵 Vercel Now Detects Next.js 16.2.4 but Build Fails Due to Concurrent next build Process
+305 3:54p 🔵 Root Cause Found: KIRO_DEMO_MODE and Convex URLs Empty in Vercel Production Env
+306 " ✅ Vercel Local Build Succeeded — Production Artifact in .vercel/output
+311 " 🔴 Homepage Force-Dynamic Added — Ensures KIRO_DEMO_MODE Read at Request Time Not Build Time
+314 " 🟣 New Vercel Production Deployment Live — dpl_AjDS4nRX11hBNyctT2Ji4txeKEoa with force-dynamic Homepage
+317 3:55p 🔵 www.ptlnextdoor.com Still Serving Old Deployment — New Build Aliases Only ptlnextdoor.vercel.app
+319 " ✅ Custom Domains Aliased to New Deployment — ptlnextdoor.com and www.ptlnextdoor.com Updated
+322 " ✅ www.ptlnextdoor.com Now Serving New Deployment — Homepage Shows "hybrid mode" Correctly
+324 3:56p ✅ Production Verification Complete — www.ptlnextdoor.com Shows "hybrid mode" with Zero Errors
 
-Access 1016k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 191k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
