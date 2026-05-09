@@ -22,10 +22,13 @@ describe("brain assembly fallback", () => {
     vi.stubEnv("HYPERSPELL_USER_ID", "");
 
     const state = await assembleBrainForEmployee("sam");
+    const citationIds = state.citations.map((citation) => citation.id);
+
     expect(state.mode).toBe("hybrid");
     expect(state.brainSources.find((packet) => packet.provider === "nia")?.status).toBe("fallback");
     expect(state.brainSources.find((packet) => packet.provider === "hyperspell")?.status).toBe(
       "fallback"
     );
+    expect(new Set(citationIds).size).toBe(citationIds.length);
   });
 });

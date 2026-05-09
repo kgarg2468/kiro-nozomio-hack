@@ -15,6 +15,7 @@ export interface OfficeEntity {
   owner?: string;
   coverage?: number;
   risk?: number;
+  progress?: number;
 }
 
 export function officeEntitiesForStage(state: DemoState, stage: DemoStage): OfficeEntity[] {
@@ -61,7 +62,8 @@ function employeeToOfficeEntity(employee: Employee, stage: DemoStage, state: Dem
         : "Seeded teammate context for ownership, review, and pair-coding handoffs.",
     owner: employee.id === "sam" ? state.task.owner : undefined,
     coverage: employee.id === "sam" ? state.profile.sourceCoverage : undefined,
-    risk: employee.id === "sam" ? state.profile.contextRiskScore : undefined
+    risk: employee.id === "sam" ? state.profile.contextRiskScore : undefined,
+    progress: employee.id === "sam" ? state.task.progress : undefined
   };
 }
 

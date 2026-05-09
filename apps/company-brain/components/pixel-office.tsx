@@ -20,7 +20,7 @@
  * 16-bitmask wall atlas because for this static layout solid fills
  * look cleaner. Doorways are explicit gaps in the wall fill.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import type { OfficeEntity } from "@/lib/office-entities";
 
@@ -331,14 +331,23 @@ export function PixelOffice({
   const assetsRef = useRef<Assets | null>(null);
   const lastTimeRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
-  const onSelectRef = useRef(onSelect);
-  const selectedRef = useRef<string | null | undefined>(selectedId);
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(selectedId ?? null);
+  const activeSelectedId = selectedId ?? internalSelectedId;
+  const selectEntity = useCallback(
+    (id: string) => {
+      setInternalSelectedId(id);
+      onSelect?.(id);
+    },
+    [onSelect]
+  );
+  const onSelectRef = useRef(selectEntity);
+  const selectedRef = useRef<string | null | undefined>(activeSelectedId);
   // Keep the ref in sync after every commit so the click handler in the
   // game-loop effect always calls the latest prop without re-binding.
   useEffect(() => {
-    onSelectRef.current = onSelect;
-    selectedRef.current = selectedId;
-  }, [onSelect, selectedId]);
+    onSelectRef.current = selectEntity;
+    selectedRef.current = activeSelectedId;
+  }, [activeSelectedId, selectEntity]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -747,7 +756,14 @@ export function PixelOffice({
   }
 
   return (
-    <PixelOfficeFrame canvasRef={canvasRef} ready={ready} big={big} entities={entities} />
+    <PixelOfficeFrame
+      canvasRef={canvasRef}
+      ready={ready}
+      big={big}
+      entities={entities}
+      selectedId={activeSelectedId}
+      onSelect={selectEntity}
+    />
   );
 }
 
@@ -766,11 +782,15 @@ function PixelOfficeFrame({
   ready,
   big,
   entities,
+  selectedId,
+  onSelect,
 }: {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   ready: boolean;
   big: boolean;
   entities: OfficeEntity[];
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -782,6 +802,21 @@ function PixelOfficeFrame({
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || !onSelect) return;
+    const onPortalClick = (event: MouseEvent) => {
+      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(
+        "[data-office-entity-id]"
+      );
+      if (!target || !el.contains(target)) return;
+      const entityId = target.dataset.officeEntityId;
+      if (entityId) onSelect(entityId);
+    };
+    el.addEventListener("click", onPortalClick);
+    return () => el.removeEventListener("click", onPortalClick);
+  }, [onSelect]);
 
   const toggle = async () => {
     const el = wrapRef.current;
@@ -820,6 +855,16 @@ function PixelOfficeFrame({
       : "border border-[var(--border)] bg-[#0a0a0c] p-3 w-full relative";
 
   const showPortals = fullscreen || big;
+  const fallbackEntity =
+    entities.find((entity) => entity.id === "sam") ??
+    entities.find((entity) => entity.kind === "agent") ??
+    entities[0] ??
+    null;
+  const selectedEntity = selectedId
+    ? (entities.find((entity) => entity.id === selectedId) ?? fallbackEntity)
+    : showPortals
+      ? fallbackEntity
+      : null;
 
   return (
     <div ref={wrapRef} className={wrapClass}>
@@ -832,7 +877,15 @@ function PixelOfficeFrame({
           aria-label="Pixel office: live Kiro onboarding state"
         />
       </div>
-      {showPortals ? <AgentPortals entities={entities} fullscreen={fullscreen} /> : null}
+      {showPortals ? (
+        <AgentPortals
+          entities={entities}
+          fullscreen={fullscreen}
+          selectedEntity={selectedEntity}
+          selectedId={selectedId}
+          onSelect={onSelect}
+        />
+      ) : null}
       <button
         type="button"
         onClick={toggle}
@@ -851,15 +904,25 @@ function PixelOfficeFrame({
 
 function AgentPortals({
   entities,
-  fullscreen
+  fullscreen,
+  selectedEntity,
+  selectedId,
+  onSelect
 }: {
   entities: OfficeEntity[];
   fullscreen: boolean;
+  selectedEntity: OfficeEntity | null;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
 }) {
-  const featured = [
+  const defaultFeatured = [
     ...entities.filter((entity) => entity.id === "sam"),
     ...entities.filter((entity) => entity.kind === "agent"),
     ...entities.filter((entity) => entity.kind === "employee" && entity.id !== "sam").slice(0, 2)
+  ];
+  const featured = [
+    ...(selectedEntity ? [selectedEntity] : []),
+    ...defaultFeatured.filter((entity) => entity.id !== selectedEntity?.id)
   ].slice(0, 5);
 
   return (
@@ -880,11 +943,26 @@ function AgentPortals({
         </p>
       </div>
 
+      {selectedEntity ? (
+        <SelectedPortal entity={selectedEntity} />
+      ) : fullscreen ? (
+        <div className="mb-3 border border-dashed border-[var(--border-raised)] bg-[#0d0f13]/62 p-3 text-[10px] font-mono leading-relaxed text-[var(--text-muted)]">
+          Click a person or agent in the office to pin their live work panel here.
+        </div>
+      ) : null}
+
       <div className="space-y-3 overflow-y-auto pr-1">
         {featured.map((entity) => (
-          <article
+          <button
             key={entity.id}
-            className="border border-[var(--border)] bg-[#0d0f13]/78 p-3"
+            type="button"
+            data-office-entity-id={entity.id}
+            className={[
+              "block w-full border bg-[#0d0f13]/78 p-3 text-left transition-colors",
+              selectedId === entity.id
+                ? "border-[var(--accent)] shadow-[0_0_0_1px_rgba(123,223,242,0.25)]"
+                : "border-[var(--border)] hover:border-[var(--border-raised)]"
+            ].join(" ")}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -919,10 +997,71 @@ function AgentPortals({
                 {entity.owner ? <PortalChip label={`owner ${entity.owner}`} /> : null}
               </div>
             ) : null}
-          </article>
+            {entity.progress !== undefined ? (
+              <div className="mt-3">
+                <div className="mb-1 flex items-center justify-between text-[8px] font-mono uppercase tracking-[0.18em] text-[var(--text-dim)]">
+                  <span>Task progress</span>
+                  <span>{entity.progress}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden bg-[var(--border)]">
+                  <div className="h-full bg-[var(--accent)]" style={{ width: `${entity.progress}%` }} />
+                </div>
+              </div>
+            ) : null}
+          </button>
         ))}
       </div>
     </aside>
+  );
+}
+
+function SelectedPortal({ entity }: { entity: OfficeEntity }) {
+  const progressValue = entity.progress ?? entity.coverage;
+  const progressLabel = entity.progress !== undefined ? "Task progress" : "Context coverage";
+
+  return (
+    <section className="mb-3 border border-[var(--accent)] bg-[var(--accent-dim)]/18 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[8px] font-mono uppercase tracking-[0.28em] text-[var(--accent-bright)]">
+            Selected
+          </div>
+          <h4 className="mt-1 truncate text-[13px] font-semibold text-[var(--text)]">
+            {entity.name}
+          </h4>
+          <p className="mt-1 truncate text-[9px] font-mono uppercase tracking-[0.16em] text-[var(--text-dim)]">
+            {entity.role ?? entity.kind}
+          </p>
+        </div>
+        <span
+          className="shrink-0 border px-2 py-0.5 text-[8px] font-mono uppercase tracking-[0.18em]"
+          style={statusStyle(entity.status)}
+        >
+          {entity.status}
+        </span>
+      </div>
+
+      <p className="mt-3 text-[11px] font-mono leading-relaxed text-[var(--text)]">
+        {entity.currentPlan ?? "Watching Kiro's live office context."}
+      </p>
+      {entity.detail ? (
+        <p className="mt-2 text-[10px] font-mono leading-relaxed text-[var(--text-muted)]">
+          {entity.detail}
+        </p>
+      ) : null}
+
+      {progressValue !== undefined ? (
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between text-[8px] font-mono uppercase tracking-[0.18em] text-[var(--text-dim)]">
+            <span>{progressLabel}</span>
+            <span>{progressValue}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden bg-[var(--border)]">
+            <div className="h-full bg-[var(--accent)]" style={{ width: `${progressValue}%` }} />
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }
 

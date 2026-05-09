@@ -3,7 +3,7 @@ import "server-only";
 import { getFixtureDemoState } from "@/lib/demo-data";
 import { fetchHyperspellBrainPacket } from "@/lib/hyperspell";
 import { fetchNiaBrainPacket } from "@/lib/nia";
-import type { DemoState } from "@/lib/types";
+import type { DemoState, SourceCitation } from "@/lib/types";
 
 export async function assembleBrainForEmployee(employeeId: string): Promise<DemoState> {
   const fixture = getFixtureDemoState();
@@ -21,7 +21,7 @@ export async function assembleBrainForEmployee(employeeId: string): Promise<Demo
     ...fixture,
     mode,
     brainSources: [hyperspell, nia, ...fixture.brainSources.filter((p) => p.provider === "fixture")],
-    citations: liveCitations.length ? [...liveCitations, ...fixture.citations] : fixture.citations
+    citations: liveCitations.length ? uniqueCitations([...liveCitations, ...fixture.citations]) : fixture.citations
   };
 }
 
@@ -29,4 +29,13 @@ export function demoMode(): DemoState["mode"] {
   const value = process.env.KIRO_DEMO_MODE;
   if (value === "live" || value === "hybrid" || value === "fixture") return value;
   return "fixture";
+}
+
+function uniqueCitations(citations: SourceCitation[]): SourceCitation[] {
+  const seen = new Set<string>();
+  return citations.filter((citation) => {
+    if (seen.has(citation.id)) return false;
+    seen.add(citation.id);
+    return true;
+  });
 }

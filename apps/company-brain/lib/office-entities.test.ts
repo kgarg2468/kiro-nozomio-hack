@@ -6,6 +6,11 @@ describe("officeEntitiesForStage", () => {
   it("maps Sam across onboarding demo stages", () => {
     const state = getFixtureDemoState();
 
+    expect(officeEntitiesForStage(state, "assemble").find((e) => e.id === "sam")).toMatchObject({
+      coverage: state.profile.sourceCoverage,
+      progress: state.task.progress,
+      risk: state.profile.contextRiskScore
+    });
     expect(officeEntitiesForStage(state, "assemble").find((e) => e.id === "sam")?.status).toBe(
       "onboarding"
     );
