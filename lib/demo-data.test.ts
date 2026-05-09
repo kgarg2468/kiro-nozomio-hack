@@ -38,6 +38,9 @@ describe("fixture demo decision capture", () => {
     expect(
       state.captureCoverage.find((item) => item.label === "Meeting transcript")?.status
     ).toBe("fixture");
+    expect(state.captureCoverage.find((item) => item.label === "SMS / hallway")?.status).toBe(
+      "missing"
+    );
     expect(state.readiness.citationIds).toContain("meeting-retry-finalized");
     expect(state.contextEvents[0]?.body).toContain("outside the capture window");
   });

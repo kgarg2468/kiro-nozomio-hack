@@ -228,6 +228,13 @@ const captureCoverage: CaptureCoverageItem[] = [
     sourceType: "nia",
     status: "indexed",
     detail: "Codebase convention indexed"
+  },
+  {
+    id: "coverage-outside-window",
+    label: "SMS / hallway",
+    sourceType: "transcript",
+    status: "missing",
+    detail: "Outside Kiro capture window"
   }
 ];
 

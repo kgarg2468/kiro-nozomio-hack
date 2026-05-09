@@ -391,7 +391,7 @@ canvas {
 
 .capture-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: 7px;
 }
 
@@ -642,7 +642,7 @@ canvas {
 
 .decision-step {
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr);
+  grid-template-columns: 82px minmax(0, 1fr);
   gap: 9px;
   border-top: 1px solid var(--line);
   padding-top: 8px;
@@ -663,6 +663,12 @@ canvas {
 .decision-card footer {
   border-top: 1px solid var(--line);
   padding-top: 9px;
+}
+
+.decision-source {
+  margin-top: 7px;
+  border-left: 1px solid var(--line-strong);
+  padding-left: 9px;
 }
 
 .confidence {

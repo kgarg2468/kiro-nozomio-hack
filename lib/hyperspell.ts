@@ -12,19 +12,23 @@ export async function fetchHyperspellBrainPacket(
 ): Promise<BrainSourcePacket> {
   const key = process.env.HYPERSPELL_API_KEY;
   const userId = process.env.HYPERSPELL_USER_ID;
-  if (!key || !userId) return fixtureHyperspellPacket("fallback");
+  if (!key) return fixtureHyperspellPacket("fallback");
 
   try {
     const query = new URLSearchParams({
-      user_id: userId,
       q: `Onboarding context for ${employeeId}: Slack decisions, Notion docs, GitHub PR history, owners, guardrails`
     });
+    if (userId) query.set("user_id", userId);
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json"
+    };
+    if (userId) headers["X-As-User"] = userId;
+
     const res = await fetch(`${HYPERSPELL_BASE_URL}/v1/search?${query}`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
+      headers,
       cache: "no-store"
     });
 

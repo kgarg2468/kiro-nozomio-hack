@@ -21,20 +21,22 @@ export function BrainAssembly({
   packets: BrainSourcePacket[];
   stage: DemoStage;
 }) {
-  const progress = stage === "assemble" ? 74 : 100;
   const missingCount = coverage.filter((item) => item.status === "missing").length;
+  const capturedCount = coverage.length - missingCount;
+  const progress = Math.round((capturedCount / Math.max(coverage.length, 1)) * 100);
+  const displayedProgress = stage === "assemble" ? Math.min(progress, 86) : progress;
   return (
     <section className="panel">
       <header className="panel-header">
         <div>
-          <h2>Brain Assembly</h2>
+          <h2>Context Capture Window</h2>
           <p className="panel-subtitle">
-            Kiro turns scattered conversations into source-backed decisions agents can act on.
+            Kiro turns scattered conversations into decision trails agents can use before code is written.
           </p>
         </div>
         <span className="status-chip">
           <span className="status-dot" />
-          {progress}% indexed
+          {displayedProgress}% captured
         </span>
       </header>
       <div className="panel-body">
@@ -43,7 +45,7 @@ export function BrainAssembly({
             <strong>Context Capture Window</strong>
             <span>
               {missingCount
-                ? `${missingCount} source gap may hide relevant decisions.`
+                ? `${missingCount} capture gap may hide relevant decisions.`
                 : "Captured sources keep the coding agent in the room."}
             </span>
           </div>

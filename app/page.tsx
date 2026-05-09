@@ -1,6 +1,7 @@
 import { DemoCockpit } from "@/components/demo-cockpit";
-import { getFixtureDemoState } from "@/lib/demo-data";
+import { assembleBrainForEmployee } from "@/lib/brain";
 
-export default function HomePage() {
-  return <DemoCockpit initialState={getFixtureDemoState()} />;
+export default async function HomePage() {
+  const state = await assembleBrainForEmployee("sam");
+  return <DemoCockpit initialState={state} />;
 }
