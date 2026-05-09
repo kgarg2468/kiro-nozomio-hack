@@ -1,15 +1,18 @@
 import { defineConfig } from "vitest/config";
-import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL(".", import.meta.url))
+      "@kiro/shared": new URL("./packages/shared/src/index.ts", import.meta.url).pathname,
+      "@kiro/coordinator": new URL(
+        "./packages/coordinator/src/index.ts",
+        import.meta.url
+      ).pathname
     }
   },
   test: {
+    include: ["packages/**/*.test.ts", "apps/**/*.test.ts"],
     environment: "node",
-    include: ["app/**/*.test.ts", "app/**/*.test.tsx", "lib/**/*.test.ts"],
-    setupFiles: ["./vitest.setup.ts"]
+    testTimeout: 30000
   }
 });
