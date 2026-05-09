@@ -18,19 +18,31 @@ struct MenuBarPopoverView: View {
                 MiniStat(value: "\(Int(store.selectedTask.progress * 100))%", label: store.selectedTask.issue)
             }
 
-            Text("Codex is paused on a retry guardrail. Replace blocking sleep with bounded async backoff before PR readiness.")
+            HStack(spacing: 10) {
+                PixelAgentAvatar(palette: store.selectedAgent.palette, status: store.selectedAgent.status, scale: 4)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(store.selectedAgent.name)
+                        .font(.subheadline.weight(.semibold))
+                    Text(store.selectedAgent.currentPlan)
+                        .font(.caption)
+                        .foregroundStyle(KiroTheme.mutedInk)
+                        .lineLimit(3)
+                }
+            }
+            .padding(10)
+            .background(KiroTheme.amber.opacity(store.selectedAgent.isBlocked ? 0.12 : 0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            Text(store.sourceMode == .live ? "Connected to Convex dashboardState." : "Using fixture data until a Convex deployment URL is configured.")
                 .font(.caption)
                 .foregroundStyle(KiroTheme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(10)
-                .background(KiroTheme.amber.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             Grid(horizontalSpacing: 8, verticalSpacing: 8) {
                 GridRow {
-                    Button("Open Task") {
-                        store.selection = .task(store.selectedTask.id)
+                    Button("Open Agent") {
+                        store.selection = .agent(store.selectedAgent.id)
                     }
-                    Button(store.primaryAgent.isPaused ? "Resume" : "Pause") {
+                    Button(store.selectedAgent.isBlocked ? "Resume" : "Block") {
                         store.togglePrimaryAgentPause()
                     }
                 }
@@ -39,8 +51,8 @@ struct MenuBarPopoverView: View {
                     Button("Dashboard") {
                         store.openDashboard()
                     }
-                    Button("Mark Ready") {
-                        store.markReady()
+                    Button("Refresh") {
+                        Task { await store.refreshFromConvexIfConfigured() }
                     }
                 }
             }

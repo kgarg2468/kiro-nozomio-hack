@@ -19,6 +19,23 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(store.isValidDashboardURL() ? Color.secondary : Color.red)
             }
+
+            Section("Convex") {
+                TextField("Convex deployment URL", text: $store.convexDeploymentURLString)
+
+                HStack {
+                    Text(store.isValidConvexURL() ? store.sourceMode.rawValue : "Use an http or https Convex URL.")
+                        .font(.caption)
+                        .foregroundStyle(store.isValidConvexURL() ? Color.secondary : Color.red)
+
+                    Spacer()
+
+                    Button("Refresh") {
+                        Task { await store.refreshFromConvexIfConfigured() }
+                    }
+                    .disabled(!store.isValidConvexURL() || store.isRefreshing)
+                }
+            }
         }
         .padding()
         .frame(width: 420)

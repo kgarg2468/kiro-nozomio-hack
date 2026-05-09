@@ -4,6 +4,7 @@ enum KiroTheme {
     static let navy = Color(hex: 0x151A27)
     static let navyRaised = Color(hex: 0x1D2737)
     static let navyPanel = Color(hex: 0x23344A)
+    static let floor = Color(hex: 0xB8AFA7)
     static let wood = Color(hex: 0x9B642D)
     static let woodDark = Color(hex: 0x5F351C)
     static let meetingBlue = Color(hex: 0x4F82A3)
@@ -14,6 +15,15 @@ enum KiroTheme {
     static let amber = Color(hex: 0xF1B35A)
     static let green = Color(hex: 0x79D69F)
     static let red = Color(hex: 0xF87171)
+
+    static let agentPalette = [
+        Color(hex: 0x2F80ED),
+        Color(hex: 0x27AE60),
+        Color(hex: 0xEB5757),
+        Color(hex: 0x9B51E0),
+        Color(hex: 0xF2994A),
+        Color(hex: 0x56CCF2)
+    ]
 }
 
 extension Color {

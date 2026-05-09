@@ -6,32 +6,46 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             SidebarView()
-                .navigationSplitViewColumnWidth(min: 240, ideal: 270, max: 320)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 250, max: 300)
         } detail: {
-            TaskDetailView(task: store.selectedTask)
+            DetailRouter()
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
-                    store.togglePrimaryAgentPause()
+                    Task { await store.refreshFromConvexIfConfigured() }
                 } label: {
-                    Label(store.primaryAgent.isPaused ? "Resume" : "Pause", systemImage: store.primaryAgent.isPaused ? "play.fill" : "pause.fill")
+                    Label(store.isRefreshing ? "Refreshing" : "Refresh", systemImage: "arrow.clockwise")
                 }
+                .disabled(store.isRefreshing)
 
                 Button {
-                    store.markReady()
+                    store.togglePrimaryAgentPause()
                 } label: {
-                    Label("Mark Ready", systemImage: "checkmark.seal.fill")
+                    Label(store.selectedAgent.isBlocked ? "Resume" : "Block", systemImage: store.selectedAgent.isBlocked ? "play.fill" : "pause.fill")
                 }
 
                 Button {
                     store.openDashboard()
                 } label: {
-                    Label("Open Dashboard", systemImage: "safari")
+                    Label("Dashboard", systemImage: "safari")
                 }
             }
         }
-        .background(KiroTheme.navy)
-        .preferredColorScheme(.dark)
+    }
+}
+
+private struct DetailRouter: View {
+    @EnvironmentObject private var store: KiroTaskStore
+
+    var body: some View {
+        switch store.selection {
+        case .agent:
+            AgentDetailView(agent: store.selectedAgent)
+        case .task:
+            TaskDetailView(task: store.selectedTask)
+        case .readiness:
+            ReadinessDetailView()
+        }
     }
 }

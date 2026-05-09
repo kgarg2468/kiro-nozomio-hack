@@ -6,13 +6,12 @@ struct AppCard<Content: View>: View {
 
     var body: some View {
         content
-            .padding(16)
-            .background(KiroTheme.navyRaised.opacity(0.96), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(14)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke((tint ?? KiroTheme.cyan).opacity(tint == nil ? 0.18 : 0.34), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke((tint ?? Color.secondary).opacity(tint == nil ? 0.16 : 0.38), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.22), radius: 14, x: 0, y: 8)
     }
 }
 
@@ -24,14 +23,80 @@ struct StatusBadge: View {
         Text(text)
             .font(.caption2.weight(.semibold))
             .lineLimit(1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
             .foregroundStyle(tint)
-            .background(tint.opacity(0.14), in: Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(tint.opacity(0.22), lineWidth: 1)
+            .background(tint.opacity(0.12), in: Capsule())
+    }
+}
+
+struct PixelAgentAvatar: View {
+    let palette: Int
+    let status: AgentStatus
+    var scale: CGFloat = 4
+
+    private var bodyColor: Color { KiroTheme.agentPalette[abs(palette) % KiroTheme.agentPalette.count] }
+    private var statusColor: Color {
+        switch status {
+        case .idle: .secondary
+        case .working: KiroTheme.cyan
+        case .blocked: KiroTheme.amber
+        case .ready: KiroTheme.green
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PixelRow([0, 1, 1, 1, 0], scale: scale, colors: colors)
+            PixelRow([1, 2, 2, 2, 1], scale: scale, colors: colors)
+            PixelRow([1, 3, 2, 3, 1], scale: scale, colors: colors)
+            PixelRow([0, 1, 1, 1, 0], scale: scale, colors: colors)
+            PixelRow([0, 4, 4, 4, 0], scale: scale, colors: colors)
+            PixelRow([4, 4, 5, 4, 4], scale: scale, colors: colors)
+            PixelRow([0, 4, 4, 4, 0], scale: scale, colors: colors)
+            PixelRow([0, 6, 0, 6, 0], scale: scale, colors: colors)
+        }
+        .padding(scale)
+        .background(Color.black.opacity(0.08), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .overlay(alignment: .bottomTrailing) {
+            Rectangle()
+                .fill(statusColor)
+                .frame(width: scale * 2.2, height: scale * 2.2)
+                .offset(x: scale * 0.8, y: scale * 0.8)
+        }
+    }
+
+    private var colors: [Int: Color] {
+        [
+            1: Color(red: 0.18, green: 0.14, blue: 0.12),
+            2: Color(red: 0.86, green: 0.66, blue: 0.48),
+            3: Color.black.opacity(0.8),
+            4: bodyColor,
+            5: bodyColor.opacity(0.72),
+            6: Color(red: 0.12, green: 0.15, blue: 0.2)
+        ]
+    }
+}
+
+private struct PixelRow: View {
+    let values: [Int]
+    let scale: CGFloat
+    let colors: [Int: Color]
+
+    init(_ values: [Int], scale: CGFloat, colors: [Int: Color]) {
+        self.values = values
+        self.scale = scale
+        self.colors = colors
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(values.enumerated()), id: \.offset) { _, value in
+                Rectangle()
+                    .fill(colors[value] ?? .clear)
+                    .frame(width: scale, height: scale)
             }
+        }
     }
 }
 
@@ -40,17 +105,17 @@ struct MetricTile: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.caption)
-                .foregroundStyle(KiroTheme.mutedInk)
+                .foregroundStyle(.secondary)
             Text(value)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(11)
-        .background(KiroTheme.navyPanel.opacity(0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }
 
@@ -61,7 +126,7 @@ struct FileListCard: View {
 
     var body: some View {
         AppCard {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 Label(title, systemImage: systemImage)
                     .font(.headline)
 
@@ -69,9 +134,7 @@ struct FileListCard: View {
                     Label(item, systemImage: "doc")
                         .font(.caption)
                         .lineLimit(1)
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(KiroTheme.navyPanel.opacity(0.72), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .padding(.vertical, 5)
                 }
             }
         }
@@ -89,7 +152,7 @@ struct CodeLine: View {
             Text(prefix)
                 .foregroundStyle(tint)
             Text(text)
-                .foregroundStyle(.white.opacity(0.92))
+                .foregroundStyle(.primary)
                 .textSelection(.enabled)
         }
         .font(.system(.caption, design: .monospaced))
@@ -99,178 +162,159 @@ struct CodeLine: View {
 struct PixelOfficePreview: View {
     let task: KiroTask
     let agent: KiroAgent
+    let agents: [KiroAgent]
 
     var body: some View {
         AppCard {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Label("Live Office Map", systemImage: "square.grid.3x3.fill")
+                    Label("Live Pixel Agent Floor", systemImage: "square.grid.3x3.fill")
                         .font(.headline)
-                        .foregroundStyle(KiroTheme.cyan)
                     Spacer()
-                    StatusBadge(text: agent.status.label, tint: agent.status == .paused ? KiroTheme.amber : KiroTheme.green)
+                    StatusBadge(text: agent.status.label, tint: tint(for: agent.status))
                 }
 
-                ZStack(alignment: .topLeading) {
-                    HStack(spacing: 0) {
-                        PixelRoom(color: KiroTheme.wood, gridColor: KiroTheme.woodDark.opacity(0.48))
-                            .frame(width: 430)
-                        PixelRoom(color: KiroTheme.tile, gridColor: Color.black.opacity(0.08))
-                            .frame(width: 180)
-                        PixelRoom(color: KiroTheme.meetingBlue, gridColor: Color.white.opacity(0.08))
+                GeometryReader { proxy in
+                    let width = proxy.size.width
+                    ZStack(alignment: .topLeading) {
+                        PixelFloor()
+                        ForEach(Array(agents.enumerated()), id: \.element.id) { index, liveAgent in
+                            PixelAgentNode(agent: liveAgent, index: index, width: width)
+                        }
                     }
-
-                    PixelDesk(x: 58, y: 78, name: "Sam", status: .blocked)
-                    PixelDesk(x: 286, y: 78, name: "Codex", status: .blocked)
-                    PixelDesk(x: 58, y: 230, name: "Marcus", status: .ready)
-                    PixelDesk(x: 286, y: 230, name: "Kiro", status: .inProgress)
-                    PixelAvatar(x: 515, y: 82, color: .red, initials: "A")
-                    PixelMeeting(x: 630, y: 215)
-                    PixelPlant(x: 26, y: 55)
-                    PixelPlant(x: 690, y: 86)
-                    PixelPlant(x: 700, y: 310)
                 }
-                .frame(height: 360)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(height: 270)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.black.opacity(0.35), lineWidth: 2)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
                 }
 
-                Text("\(task.issue) is paused at Codex while Kiro checks retry policy evidence. The visual map mirrors the pixel-office style from the demo.")
+                Text("\(task.issue) follows \(agent.name)'s live session state. Agent rows, detail panes, and the menu bar all read from the same store.")
                     .font(.callout)
-                    .foregroundStyle(KiroTheme.mutedInk)
+                    .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private func tint(for status: AgentStatus) -> Color {
+        switch status {
+        case .idle: .secondary
+        case .working: KiroTheme.cyan
+        case .blocked: KiroTheme.amber
+        case .ready: KiroTheme.green
         }
     }
 }
 
-private struct PixelRoom: View {
-    let color: Color
-    let gridColor: Color
+private struct PixelFloor: View {
+    var body: some View {
+        ZStack {
+            KiroTheme.floor
+            GridLines(step: 18, color: Color.black.opacity(0.08))
+            VStack(spacing: 18) {
+                HStack(spacing: 18) {
+                    PixelDeskBlock()
+                    PixelDeskBlock()
+                    Spacer()
+                    PixelMeetingBlock()
+                }
+                Spacer()
+                HStack(spacing: 18) {
+                    PixelDeskBlock()
+                    PixelDeskBlock()
+                    Spacer()
+                    PixelPlantBlock()
+                }
+            }
+            .padding(18)
+        }
+    }
+}
+
+private struct PixelAgentNode: View {
+    let agent: KiroAgent
+    let index: Int
+    let width: CGFloat
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                color
-                GridLines(width: proxy.size.width, height: proxy.size.height, step: 24, color: gridColor)
-            }
+        VStack(spacing: 5) {
+            PixelAgentAvatar(palette: agent.palette, status: agent.status, scale: 5)
+            Text(agent.name)
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .lineLimit(1)
         }
+        .frame(width: 90)
+        .position(position)
+    }
+
+    private var position: CGPoint {
+        let points = [
+            CGPoint(x: 95, y: 105),
+            CGPoint(x: 250, y: 105),
+            CGPoint(x: 95, y: 215),
+            CGPoint(x: 250, y: 215),
+            CGPoint(x: max(width - 130, 330), y: 145),
+            CGPoint(x: max(width - 210, 420), y: 215)
+        ]
+        return points[index % points.count]
     }
 }
 
 private struct GridLines: View {
-    let width: CGFloat
-    let height: CGFloat
     let step: CGFloat
     let color: Color
 
     var body: some View {
-        Path { path in
-            var x: CGFloat = 0
-            while x <= width {
-                path.move(to: CGPoint(x: x, y: 0))
-                path.addLine(to: CGPoint(x: x, y: height))
-                x += step
-            }
-            var y: CGFloat = 0
-            while y <= height {
-                path.move(to: CGPoint(x: 0, y: y))
-                path.addLine(to: CGPoint(x: width, y: y))
-                y += step
-            }
-        }
-        .stroke(color, lineWidth: 1)
-    }
-}
-
-private struct PixelDesk: View {
-    let x: CGFloat
-    let y: CGFloat
-    let name: String
-    let status: TaskStatus
-
-    var body: some View {
-        VStack(spacing: 5) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(KiroTheme.woodDark)
-                    .frame(width: 118, height: 52)
-                Rectangle()
-                    .fill(KiroTheme.navyPanel)
-                    .frame(width: 42, height: 26)
-                    .offset(y: -4)
-                Rectangle()
-                    .fill(KiroTheme.cyan.opacity(0.72))
-                    .frame(width: 30, height: 16)
-                    .offset(y: -4)
-                HStack(spacing: 4) {
-                    Rectangle().fill(KiroTheme.tile).frame(width: 34, height: 8)
-                    Circle().fill(status == .blocked ? KiroTheme.amber : KiroTheme.green).frame(width: 9, height: 9)
+        GeometryReader { proxy in
+            Path { path in
+                var x: CGFloat = 0
+                while x <= proxy.size.width {
+                    path.move(to: CGPoint(x: x, y: 0))
+                    path.addLine(to: CGPoint(x: x, y: proxy.size.height))
+                    x += step
                 }
-                .offset(y: 18)
+                var y: CGFloat = 0
+                while y <= proxy.size.height {
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: proxy.size.width, y: y))
+                    y += step
+                }
             }
-            Text(name)
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(KiroTheme.ink)
+            .stroke(color, lineWidth: 1)
         }
-        .position(x: x + 59, y: y + 36)
     }
 }
 
-private struct PixelAvatar: View {
-    let x: CGFloat
-    let y: CGFloat
-    let color: Color
-    let initials: String
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Circle().fill(Color.black.opacity(0.82)).frame(width: 30, height: 30)
-            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 26, height: 28)
-            Text(initials)
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white)
-                .offset(y: -23)
-        }
-        .position(x: x, y: y)
-    }
-}
-
-private struct PixelMeeting: View {
-    let x: CGFloat
-    let y: CGFloat
-
+private struct PixelDeskBlock: View {
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(KiroTheme.wood.opacity(0.9))
-                .frame(width: 96, height: 72)
-            RoundedRectangle(cornerRadius: 3)
-                .stroke(KiroTheme.tile.opacity(0.5), lineWidth: 2)
-                .frame(width: 96, height: 72)
-            PixelAvatar(x: -28, y: 0, color: .purple, initials: "S")
-            PixelAvatar(x: 34, y: 3, color: .gray, initials: "M")
+            Rectangle().fill(KiroTheme.wood).frame(width: 112, height: 44)
+            Rectangle().fill(KiroTheme.woodDark).frame(width: 112, height: 8).offset(y: 18)
+            Rectangle().fill(Color.black.opacity(0.55)).frame(width: 34, height: 22).offset(y: -6)
+            Rectangle().fill(KiroTheme.cyan.opacity(0.65)).frame(width: 24, height: 12).offset(y: -6)
         }
-        .position(x: x, y: y)
     }
 }
 
-private struct PixelPlant: View {
-    let x: CGFloat
-    let y: CGFloat
+private struct PixelMeetingBlock: View {
+    var body: some View {
+        ZStack {
+            Rectangle().fill(KiroTheme.meetingBlue).frame(width: 130, height: 76)
+            Rectangle().fill(Color.white.opacity(0.14)).frame(width: 118, height: 64)
+        }
+    }
+}
 
+private struct PixelPlantBlock: View {
     var body: some View {
         VStack(spacing: -2) {
-            HStack(spacing: -4) {
-                Capsule().fill(KiroTheme.green).frame(width: 9, height: 34).rotationEffect(.degrees(-34))
-                Capsule().fill(KiroTheme.green).frame(width: 9, height: 40)
-                Capsule().fill(KiroTheme.green).frame(width: 9, height: 34).rotationEffect(.degrees(34))
+            HStack(spacing: -3) {
+                Rectangle().fill(KiroTheme.green).frame(width: 9, height: 34).rotationEffect(.degrees(-25))
+                Rectangle().fill(KiroTheme.green).frame(width: 9, height: 38)
+                Rectangle().fill(KiroTheme.green).frame(width: 9, height: 34).rotationEffect(.degrees(25))
             }
-            RoundedRectangle(cornerRadius: 2)
-                .fill(KiroTheme.tile)
-                .frame(width: 26, height: 22)
+            Rectangle().fill(KiroTheme.tile).frame(width: 30, height: 22)
         }
-        .position(x: x, y: y)
     }
 }

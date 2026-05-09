@@ -11,13 +11,14 @@ struct KiroTaskStoreTests {
         #expect(store.selectedTask.title == "Fix notification webhook retry hang")
         #expect(store.primaryAgent.name == "Codex Pair")
         #expect(store.blockedAgentCount == 1)
+        #expect(store.selectedAgent.name == "Codex Pair")
     }
 
     @Test
     func pauseResumeUpdatesAgentAndTaskState() {
         let store = KiroTaskStore.fixture()
 
-        #expect(store.primaryAgent.status == .paused)
+        #expect(store.primaryAgent.status == .blocked)
         #expect(store.selectedTask.status == .blocked)
 
         store.togglePrimaryAgentPause()
@@ -35,7 +36,7 @@ struct KiroTaskStoreTests {
         #expect(store.selectedTask.status == .ready)
         #expect(store.primaryAgent.status == .ready)
         #expect(store.readiness.isReady)
-        #expect(store.readiness.verdict == "Ready for Marcus review")
+        #expect(store.readiness.verdict == "Ready for owner review")
     }
 
     @Test
@@ -44,5 +45,15 @@ struct KiroTaskStoreTests {
 
         #expect(store.isValidDashboardURL())
         #expect(store.dashboardURL.absoluteString == "http://localhost:3000")
+    }
+
+    @Test
+    func agentSelectionDoesNotRouteBackToFirstTask() {
+        let store = KiroTaskStore.fixture()
+
+        store.selection = .agent("agent-kiro")
+
+        #expect(store.selectedAgent.name == "Kiro Guide")
+        #expect(store.selectedAgent.status == .working)
     }
 }

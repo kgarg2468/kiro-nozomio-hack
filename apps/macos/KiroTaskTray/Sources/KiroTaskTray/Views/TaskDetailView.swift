@@ -5,32 +5,106 @@ struct TaskDetailView: View {
     let task: KiroTask
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                PixelOfficePreview(task: task, agent: store.primaryAgent)
-                TaskSummaryCard(task: task)
-                GuardrailCard(guardrail: store.guardrail)
+        DetailScroll {
+            PixelOfficePreview(task: task, agent: store.primaryAgent, agents: store.agents)
+            TaskSummaryCard(task: task)
 
-                HStack(alignment: .top, spacing: 16) {
-                    FileListCard(title: "Affected Files", systemImage: "doc.text.magnifyingglass", items: task.affectedFiles)
-                    FileListCard(title: "Tests", systemImage: "checklist", items: task.tests)
-                }
+            HStack(alignment: .top, spacing: 12) {
+                FileListCard(title: "Files", systemImage: "doc.text.magnifyingglass", items: task.affectedFiles)
+                FileListCard(title: "Tests", systemImage: "checklist", items: task.tests)
+            }
 
-                HStack(alignment: .top, spacing: 16) {
-                    EvidenceCard(citations: store.citations)
-                    ReadinessCard(readiness: store.readiness)
+            GuardrailCard(guardrail: store.guardrail)
+            EvidenceCard(citations: store.citations)
+        }
+    }
+}
+
+struct AgentDetailView: View {
+    @EnvironmentObject private var store: KiroTaskStore
+    let agent: KiroAgent
+
+    var body: some View {
+        DetailScroll {
+            AppCard(tint: tint) {
+                HStack(alignment: .top, spacing: 18) {
+                    PixelAgentAvatar(palette: agent.palette, status: agent.status, scale: 9)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(agent.name)
+                                    .font(.system(size: 28, weight: .semibold))
+                                Text("\(agent.kind.capitalized) agent · \(agent.role)")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            StatusBadge(text: agent.status.label, tint: tint)
+                        }
+
+                        Text(agent.currentPlan)
+                            .font(.callout)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if let owner = store.employee(id: agent.ownerEmployeeID) {
+                            HStack(spacing: 10) {
+                                MetricTile(label: "Owner", value: owner.name)
+                                MetricTile(label: "GitHub", value: owner.github)
+                                MetricTile(label: "Employee", value: owner.status.capitalized)
+                            }
+                        }
+                    }
                 }
             }
-            .padding(24)
-            .frame(maxWidth: 920, alignment: .leading)
+
+            PixelOfficePreview(task: store.selectedTask, agent: agent, agents: store.agents)
+
+            HStack(alignment: .top, spacing: 12) {
+                AgentEventCard(events: store.contextEvents)
+                EvidenceCard(citations: store.citations)
+            }
         }
-        .background(
-            LinearGradient(
-                colors: [KiroTheme.navy, KiroTheme.navyRaised],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+    }
+
+    private var tint: Color {
+        switch agent.status {
+        case .idle: .secondary
+        case .working: KiroTheme.cyan
+        case .blocked: KiroTheme.amber
+        case .ready: KiroTheme.green
+        }
+    }
+}
+
+struct ReadinessDetailView: View {
+    @EnvironmentObject private var store: KiroTaskStore
+
+    var body: some View {
+        DetailScroll {
+            ReadinessCard(readiness: store.readiness)
+
+            HStack(alignment: .top, spacing: 12) {
+                FileListCard(title: "Required Tests", systemImage: "checklist", items: store.readiness.tests)
+                EvidenceCard(citations: store.citations)
+            }
+
+            GuardrailCard(guardrail: store.guardrail)
+        }
+    }
+}
+
+struct DetailScroll<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                content
+            }
+            .padding(18)
+            .frame(maxWidth: 980, alignment: .leading)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
@@ -40,25 +114,23 @@ private struct TaskSummaryCard: View {
 
     var body: some View {
         AppCard {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("\(task.issue) · Notifications")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("\(task.issue) · \(task.owner)")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(KiroTheme.cyan)
                             .textCase(.uppercase)
 
                         Text(task.title)
-                            .font(.system(size: 25, weight: .semibold))
-                            .foregroundStyle(KiroTheme.ink)
+                            .font(.title2.weight(.semibold))
 
-                        Text("Selected for Sam because the bug is localized, Python async-heavy, and has a clear owner path.")
+                        Text(task.whyMatched.joined(separator: " · "))
                             .font(.callout)
-                            .foregroundStyle(KiroTheme.mutedInk)
+                            .foregroundStyle(.secondary)
                     }
 
                     Spacer()
-
                     StatusBadge(text: task.status.label, tint: task.status == .blocked ? KiroTheme.amber : KiroTheme.green)
                 }
 
@@ -71,31 +143,6 @@ private struct TaskSummaryCard: View {
 
                 ProgressView(value: task.progress)
                     .tint(task.status == .blocked ? KiroTheme.amber : KiroTheme.cyan)
-
-                HStack(alignment: .center, spacing: 10) {
-                    Text("Next action: fix retry wait, then reopen PR readiness.")
-                        .font(.callout)
-                        .foregroundStyle(KiroTheme.mutedInk)
-
-                    Spacer()
-
-                    Button {
-                        store.togglePrimaryAgentPause()
-                    } label: {
-                        Label(store.primaryAgent.isPaused ? "Resume" : "Pause", systemImage: store.primaryAgent.isPaused ? "play.fill" : "pause.fill")
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Button("Assign") {
-                        store.assignSelectedTaskToCodex()
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button("Mark Ready") {
-                        store.markReady()
-                    }
-                    .buttonStyle(.bordered)
-                }
             }
         }
     }
@@ -105,14 +152,14 @@ private struct GuardrailCard: View {
     let guardrail: Guardrail
 
     var body: some View {
-        AppCard(tint: .orange) {
-            VStack(alignment: .leading, spacing: 12) {
+        AppCard(tint: guardrail.isBlocking ? KiroTheme.amber : KiroTheme.cyan) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
-                Label("Blocking Guardrail", systemImage: "exclamationmark.triangle.fill")
+                    Label(guardrail.isBlocking ? "Blocking Guardrail" : "Guardrail", systemImage: guardrail.isBlocking ? "exclamationmark.triangle.fill" : "checkmark.shield")
                         .font(.headline)
-                        .foregroundStyle(KiroTheme.amber)
+                        .foregroundStyle(guardrail.isBlocking ? KiroTheme.amber : KiroTheme.cyan)
                     Spacer()
-                    StatusBadge(text: "warning", tint: KiroTheme.amber)
+                    StatusBadge(text: guardrail.isBlocking ? "blocking" : "active", tint: guardrail.isBlocking ? KiroTheme.amber : KiroTheme.cyan)
                 }
 
                 Text(guardrail.title)
@@ -120,17 +167,43 @@ private struct GuardrailCard: View {
 
                 Text(guardrail.detail)
                     .font(.callout)
-                    .foregroundStyle(KiroTheme.mutedInk)
+                    .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    CodeLine(prefix: "-", text: guardrail.badCode, tint: .red)
-                    CodeLine(prefix: "+", text: guardrail.fixCode, tint: .green)
+                    CodeLine(prefix: "-", text: guardrail.badCode, tint: KiroTheme.red)
+                    CodeLine(prefix: "+", text: guardrail.fixCode, tint: KiroTheme.green)
                 }
-                .padding(12)
+                .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.black.opacity(0.58), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
         }
+    }
+}
+
+private struct AgentEventCard: View {
+    let events: [ContextEvent]
+
+    var body: some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Live Context Events", systemImage: "waveform.path.ecg")
+                    .font(.headline)
+
+                ForEach(events) { event in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(event.title)
+                            .font(.subheadline.weight(.semibold))
+                        Text(event.body)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Divider()
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -139,22 +212,22 @@ private struct EvidenceCard: View {
 
     var body: some View {
         AppCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Evidence", systemImage: "quote.bubble")
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Decision Evidence", systemImage: "quote.bubble")
                     .font(.headline)
 
                 ForEach(citations) { citation in
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 5) {
                         HStack {
-                            Text(citation.source)
-                                .font(.subheadline.weight(.semibold))
+                            Text(citation.source.uppercased())
+                                .font(.caption.weight(.semibold))
                             Spacer()
                             StatusBadge(text: citation.confidence.rawValue, tint: citation.confidence == .decided ? KiroTheme.green : KiroTheme.cyan)
                         }
 
                         Text(citation.summary)
                             .font(.caption)
-                            .foregroundStyle(KiroTheme.mutedInk)
+                            .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
@@ -172,32 +245,27 @@ private struct ReadinessCard: View {
     let readiness: PRReadiness
 
     var body: some View {
-        AppCard(tint: .green) {
-            VStack(alignment: .leading, spacing: 14) {
-                Label("PR Readiness", systemImage: "checkmark.seal.fill")
-                    .font(.headline)
-                    .foregroundStyle(KiroTheme.green)
+        AppCard(tint: readiness.isReady ? KiroTheme.green : KiroTheme.amber) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill((readiness.isReady ? KiroTheme.green : KiroTheme.amber).opacity(0.14))
+                    Text("\(readiness.score)")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(readiness.isReady ? KiroTheme.green : KiroTheme.amber)
+                }
+                .frame(width: 64, height: 64)
 
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(KiroTheme.green.opacity(0.14))
-                        Text("\(readiness.score)")
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(KiroTheme.green)
-                    }
-                    .frame(width: 58, height: 58)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(readiness.verdict)
-                            .font(.title3.weight(.semibold))
-                        Text(readiness.recommendation)
-                            .font(.callout)
-                            .foregroundStyle(KiroTheme.mutedInk)
-                    }
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("PR Readiness", systemImage: "checkmark.seal.fill")
+                        .font(.headline)
+                    Text(readiness.verdict)
+                        .font(.title3.weight(.semibold))
+                    Text(readiness.recommendation)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
-        .frame(maxWidth: .infinity)
     }
 }

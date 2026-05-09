@@ -11,6 +11,9 @@ struct KiroTaskTrayApp: App {
             ContentView()
                 .environmentObject(store)
                 .frame(minWidth: 960, minHeight: 640)
+                .task {
+                    await store.refreshFromConvexIfConfigured()
+                }
         }
         .commands {
             CommandGroup(after: .appInfo) {
@@ -21,10 +24,15 @@ struct KiroTaskTrayApp: App {
             }
 
             CommandMenu("Kiro") {
-                Button(store.primaryAgent.isPaused ? "Resume Agent" : "Pause Agent") {
+                Button(store.selectedAgent.isBlocked ? "Resume Agent" : "Block Agent") {
                     store.togglePrimaryAgentPause()
                 }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
+
+                Button("Refresh Convex") {
+                    Task { await store.refreshFromConvexIfConfigured() }
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
 
                 Button("Mark Ready") {
                     store.markReady()
