@@ -11,26 +11,19 @@ export async function fetchNiaBrainPacket(employeeId: string): Promise<BrainSour
   if (!key) return fixtureNiaPacket("fallback");
 
   try {
-    const res = await fetch(`${NIA_BASE_URL}/search`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
-      cache: "no-store",
-      body: JSON.stringify({
-        mode: "query",
-        search_mode: "unified",
-        repositories: splitEnv(process.env.NIA_REPOSITORIES),
-        data_sources: splitEnv(process.env.NIA_DATA_SOURCES),
-        messages: [
-          {
-            role: "user",
-            content: `Assemble codebase onboarding context for employee ${employeeId}. Return source-backed conventions, owners, starter tasks, tests, and PR patterns.`
-          }
-        ]
-      })
+    let res = await searchNia(employeeId, key, {
+      repositories: splitEnv(process.env.NIA_REPOSITORIES),
+      data_sources: splitEnv(process.env.NIA_DATA_SOURCES)
     });
+
+    if (res.status === 400) {
+      const body = await res.text();
+      if (body.includes("No sources were successfully resolved")) {
+        res = await searchNia(employeeId, key, { repositories: [], data_sources: [] });
+      } else {
+        return fixtureNiaPacket("error");
+      }
+    }
 
     if (!res.ok) return fixtureNiaPacket("error");
 
@@ -45,6 +38,33 @@ export async function fetchNiaBrainPacket(employeeId: string): Promise<BrainSour
   } catch {
     return fixtureNiaPacket("error");
   }
+}
+
+function searchNia(
+  employeeId: string,
+  key: string,
+  filters: { repositories: string[]; data_sources: string[] }
+) {
+  return fetch(`${NIA_BASE_URL}/search`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json"
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      mode: "query",
+      search_mode: "unified",
+      repositories: filters.repositories,
+      data_sources: filters.data_sources,
+      messages: [
+        {
+          role: "user",
+          content: `Assemble codebase onboarding context for employee ${employeeId}. Return source-backed conventions, owners, starter tasks, tests, and PR patterns.`
+        }
+      ]
+    })
+  });
 }
 
 function fixtureNiaPacket(status: BrainSourcePacket["status"]) {

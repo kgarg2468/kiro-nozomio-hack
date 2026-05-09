@@ -1,18 +1,36 @@
 import "server-only";
 
 import { readBrainSnapshot, writeBrainSnapshot } from "@/lib/convex-brain";
+import { fetchConvexDemoState } from "@/lib/convex-dashboard";
 import { getFixtureDemoState } from "@/lib/demo-data";
 import { fetchHyperspellBrainPacket } from "@/lib/hyperspell";
 import { fetchNiaBrainPacket } from "@/lib/nia";
 import type { DemoState, SourceCitation } from "@/lib/types";
 
-export async function assembleBrainForEmployee(employeeId: string): Promise<DemoState> {
+export type BrainMode = DemoState["mode"];
+export type LiveSource = "providers" | "convex";
+
+export async function assembleBrainForEmployee(
+  employeeId: string,
+  modeOverride?: BrainMode,
+  sourceOverride?: LiveSource
+): Promise<DemoState> {
   const fixture = getFixtureDemoState();
-  const mode = demoMode();
+  const mode = modeOverride ?? demoMode();
+  const source = sourceOverride ?? liveSource();
 
   if (mode === "fixture") {
     await writeBrainSnapshot(employeeId, fixture);
     return fixture;
+  }
+
+  if (source === "convex") {
+    const convexState = await fetchConvexDemoState();
+    if (convexState) {
+      const state = { ...convexState, mode };
+      await writeBrainSnapshot(employeeId, state);
+      return state;
+    }
   }
 
   const cached = await readBrainSnapshot(employeeId);
@@ -36,10 +54,25 @@ export async function assembleBrainForEmployee(employeeId: string): Promise<Demo
   return assembled;
 }
 
-export function demoMode(): DemoState["mode"] {
-  const value = process.env.KIRO_DEMO_MODE;
-  if (value === "live" || value === "hybrid" || value === "fixture") return value;
+export function demoMode(value?: string | string[] | null): BrainMode {
+  const normalized = firstParam(value) ?? process.env.KIRO_DEMO_MODE;
+  if (normalized === "live" || normalized === "hybrid" || normalized === "fixture") {
+    return normalized;
+  }
   return "fixture";
+}
+
+export function liveSource(value?: string | string[] | null): LiveSource {
+  return firstParam(value) === "convex" ? "convex" : "providers";
+}
+
+export function employeeIdParam(value?: string | string[] | null): string {
+  return firstParam(value)?.trim() || "sam";
+}
+
+function firstParam(value?: string | string[] | null): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value ?? undefined;
 }
 
 function uniqueCitations(citations: SourceCitation[]): SourceCitation[] {
