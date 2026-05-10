@@ -14,7 +14,9 @@
     "baseUrl": ".",
     "paths": {
       "@kiro/shared": ["packages/shared/src/index.ts"],
-      "@kiro/coordinator": ["packages/coordinator/src/index.ts"]
+      "@kiro/coordinator": ["packages/coordinator/src/index.ts"],
+      "@kiro/senior-shared": ["packages/senior-shared/src/index.ts"],
+      "@kiro/senior-coordinator": ["packages/senior-coordinator/src/index.ts"]
     },
     "declaration": true,
     "declarationMap": true,
