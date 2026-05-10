@@ -7,13 +7,17 @@ export interface FileSnapshot {
 
 export interface SurfaceInput {
   files: FileSnapshot[];
+  diff?: string | undefined;
 }
 
 export function extractSurfacesFromDiff(input: SurfaceInput): ContractSurface[] {
   const byId = new Map<string, ContractSurface>();
+  const diffTextByFile = input.diff
+    ? changedContentByFileFromDiff(input.diff)
+    : new Map<string, string>();
 
   for (const file of input.files) {
-    for (const surface of extractFileSurfaces(file)) {
+    for (const surface of extractFileSurfaces(file, diffTextByFile.get(file.path))) {
       const existing = byId.get(surface.id);
       if (existing) {
         existing.files = [...new Set([...existing.files, ...surface.files])].sort();
@@ -28,10 +32,69 @@ export function extractSurfacesFromDiff(input: SurfaceInput): ContractSurface[] 
   return [...byId.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function extractFileSurfaces(file: FileSnapshot): ContractSurface[] {
+export function changedContentByFileFromDiff(diff: string): Map<string, string> {
+  const byFile = new Map<string, string>();
+  const blocks = diff
+    .split(/(?=^diff --git )/gm)
+    .filter((block) => block.trim().length > 0);
+  for (const block of blocks) {
+    const filePath = filePathFromDiffBlock(block);
+    if (!filePath) continue;
+    const lines: string[] = [];
+    let currentDeclaration: string | null = null;
+    for (const line of block.split("\n")) {
+      if (
+        line.startsWith("diff --git ") ||
+        line.startsWith("index ") ||
+        line.startsWith("--- ") ||
+        line.startsWith("+++ ")
+      ) {
+        continue;
+      }
+      if (line.startsWith("@@")) {
+        currentDeclaration = null;
+        continue;
+      }
+      if (line.startsWith(" ")) {
+        const content = line.slice(1);
+        if (isDeclarationLine(content)) currentDeclaration = content;
+        continue;
+      }
+      if (line.startsWith("+") || line.startsWith("-")) {
+        const content = line.slice(1);
+        if (isDeclarationLine(content)) {
+          lines.push(content);
+        } else if (currentDeclaration) {
+          lines.push(currentDeclaration, content);
+        } else {
+          lines.push(content);
+        }
+      }
+    }
+    byFile.set(filePath, lines.join("\n"));
+  }
+  return byFile;
+}
+
+function isDeclarationLine(line: string): boolean {
+  return /\b(interface|type|class|function|def)\s+[A-Za-z_][A-Za-z0-9_]*/.test(
+    line
+  );
+}
+
+function extractFileSurfaces(
+  file: FileSnapshot,
+  changedContent: string | undefined
+): ContractSurface[] {
   const lowerPath = file.path.toLowerCase();
   const surfaces: ContractSurface[] = [];
-  const names = extractLikelyNames(file.content, file.path);
+  const changedNames = changedContent
+    ? extractLikelyNames(changedContent, file.path, false)
+    : [];
+  const names =
+    changedContent && changedNames.length > 0
+      ? changedNames
+      : extractLikelyNames(file.content, file.path, true);
 
   const pathKind = classifyPath(lowerPath);
   for (const name of names) {
@@ -45,6 +108,12 @@ function extractFileSurfaces(file: FileSnapshot): ContractSurface[] {
   }
 
   return surfaces;
+}
+
+function filePathFromDiffBlock(block: string): string | null {
+  const firstLine = block.split("\n")[0] ?? "";
+  const match = /^diff --git a\/(.+?) b\/(.+)$/.exec(firstLine);
+  return match?.[2] ?? null;
 }
 
 function classifyPath(lowerPath: string): SurfaceKind {
@@ -61,7 +130,11 @@ function classifyPath(lowerPath: string): SurfaceKind {
   return "unknown";
 }
 
-function extractLikelyNames(content: string, filePath: string): string[] {
+function extractLikelyNames(
+  content: string,
+  filePath: string,
+  includeBasenameFallback: boolean
+): string[] {
   const names = new Set<string>();
   const patterns = [
     /\binterface\s+([A-Z][A-Za-z0-9_]*)/g,
@@ -82,10 +155,12 @@ function extractLikelyNames(content: string, filePath: string): string[] {
     if (match[1]) names.add(tableNameToModelName(match[1]));
   }
 
-  const basename = filePath.split("/").pop() ?? filePath;
-  const base = basename.replace(/\.[^.]+$/, "");
-  if (/^[A-Z][A-Za-z0-9_]*(Card|Props|Dto|DTO|Controller|Service|Model)?$/.test(base)) {
-    names.add(normalizeName(base));
+  if (includeBasenameFallback) {
+    const basename = filePath.split("/").pop() ?? filePath;
+    const base = basename.replace(/\.[^.]+$/, "");
+    if (/^[A-Z][A-Za-z0-9_]*(Card|Props|Dto|DTO|Controller|Service|Model)?$/.test(base)) {
+      names.add(normalizeName(base));
+    }
   }
 
   return [...names];

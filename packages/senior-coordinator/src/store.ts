@@ -38,6 +38,12 @@ export interface KiroStore {
   upsertGitHubMemoryCitation(repoId: string, citation: GitHubMemoryCitation): void;
   listGitHubMemoryCitations(repoId: string): GitHubMemoryCitation[];
   upsertFingerprint(fingerprint: Fingerprint): void;
+  replaceFingerprintsForWorktree(
+    repoId: string,
+    worktreeId: string,
+    fingerprints: Fingerprint[]
+  ): void;
+  deleteFingerprintsForWorktree(repoId: string, worktreeId: string): void;
   listFingerprints(repoId: string): Fingerprint[];
   upsertAgentSession(session: AgentSession): void;
   listAgentSessions(repoId: string): AgentSession[];
@@ -211,6 +217,40 @@ class BetterSqliteKiroStore implements KiroStore {
 
   upsertFingerprint(fingerprint: Fingerprint): void {
     const parsed = fingerprintSchema.parse(fingerprint);
+    this.insertFingerprint(parsed);
+  }
+
+  replaceFingerprintsForWorktree(
+    repoId: string,
+    worktreeId: string,
+    fingerprints: Fingerprint[]
+  ): void {
+    const parsed = fingerprints.map((fingerprint) =>
+      fingerprintSchema.parse(fingerprint)
+    );
+    for (const fingerprint of parsed) {
+      if (fingerprint.repoId !== repoId || fingerprint.worktreeId !== worktreeId) {
+        throw new Error(
+          `Fingerprint ${fingerprint.id} does not belong to ${repoId}/${worktreeId}`
+        );
+      }
+    }
+    const replace = this.db.transaction(() => {
+      this.deleteFingerprintsForWorktree(repoId, worktreeId);
+      for (const fingerprint of parsed) {
+        this.insertFingerprint(fingerprint);
+      }
+    });
+    replace();
+  }
+
+  deleteFingerprintsForWorktree(repoId: string, worktreeId: string): void {
+    this.db
+      .prepare("delete from fingerprints where repo_id = ? and worktree_id = ?")
+      .run(repoId, worktreeId);
+  }
+
+  private insertFingerprint(fingerprint: Fingerprint): void {
     this.db
       .prepare(
         `
@@ -228,11 +268,11 @@ class BetterSqliteKiroStore implements KiroStore {
       `
       )
       .run({
-        ...parsed,
-        filesTouchedJson: JSON.stringify(parsed.filesTouched),
-        symbolsJson: JSON.stringify(parsed.symbols),
-        surfacesJson: JSON.stringify(parsed.surfaces),
-        contractChangesJson: JSON.stringify(parsed.contractChanges)
+        ...fingerprint,
+        filesTouchedJson: JSON.stringify(fingerprint.filesTouched),
+        symbolsJson: JSON.stringify(fingerprint.symbols),
+        surfacesJson: JSON.stringify(fingerprint.surfaces),
+        contractChangesJson: JSON.stringify(fingerprint.contractChanges)
       });
   }
 

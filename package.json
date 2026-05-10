@@ -8,7 +8,7 @@
     "dev": "next dev --port 3000",
     "build": "pnpm -r --filter './packages/**' build && next build",
     "typecheck": "pnpm -r --filter './packages/**' typecheck && tsc --noEmit --pretty false",
-    "test": "vitest run && pnpm -r --filter './packages/**' test"
+    "test": "pnpm -r --filter './packages/**' build && vitest run && pnpm -r --filter './packages/**' test"
   },
   "dependencies": {
     "@kiro/senior-shared": "workspace:*",

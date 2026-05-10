@@ -179,6 +179,55 @@ describe("conflict engine", () => {
     expect(conflicts[0]?.primarySurface).toBe("TaskCard props");
   });
 
+  it("uses the shared file as primary surface for different symbols in one types file", () => {
+    const conflicts = detectConflicts([
+      {
+        ...baseFingerprint,
+        id: "fp-a",
+        worktreeId: "wt-a",
+        diffHash: "a",
+        filesTouched: ["apps/company-brain/lib/types.ts"],
+        symbols: { added: [], modified: ["SourceCitation"], removed: [] },
+        surfaces: [
+          {
+            id: "sourcecitation-type",
+            label: "SourceCitation type",
+            kind: "type",
+            files: ["apps/company-brain/lib/types.ts"],
+            confidence: 0.9,
+            evidence: ["type path"]
+          }
+        ],
+        semanticSummary: "Adds SourceCitation.priority.",
+        contractChanges: ["SourceCitation type"]
+      },
+      {
+        ...baseFingerprint,
+        id: "fp-b",
+        worktreeId: "wt-b",
+        diffHash: "b",
+        filesTouched: ["apps/company-brain/lib/types.ts"],
+        symbols: { added: [], modified: ["ConfidenceLabel"], removed: [] },
+        surfaces: [
+          {
+            id: "confidencelabel-type",
+            label: "ConfidenceLabel type",
+            kind: "type",
+            files: ["apps/company-brain/lib/types.ts"],
+            confidence: 0.9,
+            evidence: ["type path"]
+          }
+        ],
+        semanticSummary: "Renames ConfidenceLabel literals.",
+        contractChanges: ["ConfidenceLabel type"]
+      }
+    ]);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.primarySurface).toBe("apps/company-brain/lib/types.ts");
+    expect(conflicts[0]?.title).not.toContain("AgentSession");
+  });
+
   it("does not open medium/high risk for unrelated worktrees", () => {
     const conflicts = detectConflicts([
       {

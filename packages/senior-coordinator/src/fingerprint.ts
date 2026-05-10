@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Fingerprint } from "@kiro/senior-shared";
 import { fingerprintSchema } from "@kiro/senior-shared";
 import {
+  changedContentByFileFromDiff,
   extractSurfacesFromDiff,
   type FileSnapshot
 } from "./indexer.js";
@@ -11,14 +12,18 @@ export interface HeuristicFingerprintInput {
   worktreeId: string;
   diffHash: string;
   files: FileSnapshot[];
+  diff?: string | undefined;
   createdAt?: number;
 }
 
 export function createHeuristicFingerprint(
   input: HeuristicFingerprintInput
 ): Fingerprint {
-  const surfaces = extractSurfacesFromDiff({ files: input.files });
-  const symbols = extractSymbols(input.files);
+  const surfaces = extractSurfacesFromDiff({
+    files: input.files,
+    diff: input.diff
+  });
+  const symbols = extractSymbols(input.files, input.diff);
   const surfaceLabels = surfaces.map((surface) => surface.label);
   const semanticSummary =
     surfaceLabels.length > 0
@@ -42,8 +47,14 @@ export function createHeuristicFingerprint(
   return fingerprintSchema.parse(fingerprint);
 }
 
-function extractSymbols(files: FileSnapshot[]): Fingerprint["symbols"] {
+function extractSymbols(
+  files: FileSnapshot[],
+  diff: string | undefined
+): Fingerprint["symbols"] {
   const modified = new Set<string>();
+  const changedContentByFile = diff
+    ? changedContentByFileFromDiff(diff)
+    : new Map<string, string>();
   const patterns = [
     /\binterface\s+([A-Z][A-Za-z0-9_]*)/g,
     /\btype\s+([A-Z][A-Za-z0-9_]*)/g,
@@ -54,8 +65,10 @@ function extractSymbols(files: FileSnapshot[]): Fingerprint["symbols"] {
   ];
 
   for (const file of files) {
+    const changedContent = changedContentByFile.get(file.path);
+    const content = changedContent || file.content;
     for (const pattern of patterns) {
-      for (const match of file.content.matchAll(pattern)) {
+      for (const match of content.matchAll(pattern)) {
         if (match[1]) modified.add(match[1]);
       }
     }

@@ -370,6 +370,57 @@ describe("coordinator server", () => {
     expect(fingerprints.json().fingerprints).toEqual([]);
   });
 
+  it("keeps dashboard conflicts and MCP checkpoint choices on the same live set", async () => {
+    const repoRoot = await createContractRepo();
+    const wtA = path.join(path.dirname(repoRoot), `kiro-server-a-${path.basename(repoRoot)}`);
+    const wtB = path.join(path.dirname(repoRoot), `kiro-server-b-${path.basename(repoRoot)}`);
+    await execa("git", ["worktree", "add", "-b", "agent-a", wtA], { cwd: repoRoot });
+    await execa("git", ["worktree", "add", "-b", "agent-b", wtB], { cwd: repoRoot });
+    await writeFile(
+      path.join(wtA, "src", "db", "schema.ts"),
+      "export interface Task { id: string; priority: string }\n"
+    );
+    await writeFile(
+      path.join(wtB, "src", "db", "schema.ts"),
+      "export interface Task { id: string; tags: string[] }\n"
+    );
+    const app = await createCoordinatorApp({
+      repoRoot,
+      dbPath: path.join(repoRoot, ".kiro", "kiro.sqlite"),
+      token: "test-token",
+      startWatcher: false
+    });
+    apps.push(app);
+
+    await app.inject({
+      method: "POST",
+      url: "/api/analyze",
+      headers: { authorization: "Bearer test-token" }
+    });
+    const join = await app.inject({
+      method: "POST",
+      url: "/api/mcp/join",
+      headers: { authorization: "Bearer test-token" },
+      payload: { cwd: wtA, agentKind: "codex", displayName: "Codex A" }
+    });
+    const checkpoint = await app.inject({
+      method: "POST",
+      url: "/api/mcp/checkpoint",
+      headers: { authorization: "Bearer test-token" },
+      payload: { sessionId: join.json().sessionId }
+    });
+    const dashboardConflicts = await app.inject({
+      method: "GET",
+      url: "/api/conflicts"
+    });
+
+    expect(checkpoint.json().choices.map((choice: { conflictId: string }) => choice.conflictId)).toEqual(
+      dashboardConflicts
+        .json()
+        .conflicts.map((conflict: { id: string }) => conflict.id)
+    );
+  });
+
   it("returns the newest live fingerprint for each dirty worktree", async () => {
     const repoRoot = await createRepo();
     const app = await createCoordinatorApp({

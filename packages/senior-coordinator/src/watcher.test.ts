@@ -63,6 +63,46 @@ describe("KiroWatcher", () => {
     store.close();
   });
 
+  it("removes stale fingerprints and resolves conflicts when a worktree becomes clean", async () => {
+    const repo = await createRepo();
+    const wtA = path.join(path.dirname(repo), `kiro-watch-a-${path.basename(repo)}`);
+    const wtB = path.join(path.dirname(repo), `kiro-watch-b-${path.basename(repo)}`);
+    await execa("git", ["worktree", "add", "-b", "agent-a", wtA], { cwd: repo });
+    await execa("git", ["worktree", "add", "-b", "agent-b", wtB], { cwd: repo });
+    await writeFile(
+      path.join(wtA, "src", "db", "schema.ts"),
+      "export interface Task { id: string; priority: string }\n"
+    );
+    await writeFile(
+      path.join(wtB, "src", "db", "schema.ts"),
+      "export interface Task { id: string; tags: string[] }\n"
+    );
+
+    const store = createKiroStore(":memory:");
+    const watcher = createKiroWatcher({
+      repoRoot: repo,
+      repoId: "repo-1",
+      store,
+      now: () => 1778000000000
+    });
+
+    await watcher.scanOnce();
+    expect(store.listFingerprints("repo-1")).toHaveLength(2);
+    expect(store.listConflicts("repo-1")[0]?.status).toBe("open");
+
+    await execa("git", ["restore", "src/db/schema.ts"], { cwd: wtA });
+    await watcher.scanOnce();
+
+    expect(store.listFingerprints("repo-1").map((item) => item.worktreeId)).toEqual([
+      store.listWorktrees("repo-1").find((worktree) => worktree.branch === "agent-b")
+        ?.id
+    ]);
+    expect(store.listConflicts("repo-1")[0]?.status).toBe("resolved");
+
+    await watcher.stop();
+    store.close();
+  });
+
   it("marks removed git worktrees as missing on refresh", async () => {
     const repo = await createRepo();
     const wtA = path.join(path.dirname(repo), `kiro-watch-a-${path.basename(repo)}`);

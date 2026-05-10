@@ -187,6 +187,15 @@ class ChokidarKiroWatcher implements KiroWatcher {
   }
 
   private persistAnalysis(result: AnalyzeWorktreesResult): void {
+    const activeWorktrees = this.options.store
+      .listWorktrees(this.options.repoId)
+      .filter((worktree) => worktree.status === "active");
+    const fingerprintsByWorktreeId = new Map<string, typeof result.fingerprints>();
+    for (const fingerprint of result.fingerprints) {
+      const previous = fingerprintsByWorktreeId.get(fingerprint.worktreeId) ?? [];
+      previous.push(fingerprint);
+      fingerprintsByWorktreeId.set(fingerprint.worktreeId, previous);
+    }
     const existingConflicts = new Map(
       this.options.store
         .listConflicts(this.options.repoId)
@@ -194,8 +203,28 @@ class ChokidarKiroWatcher implements KiroWatcher {
     );
     const activeConflictIds = new Set<string>();
 
-    for (const fingerprint of result.fingerprints) {
-      this.options.store.upsertFingerprint(fingerprint);
+    for (const worktree of activeWorktrees) {
+      const fingerprints = fingerprintsByWorktreeId.get(worktree.id) ?? [];
+      if (worktree.dirty && fingerprints.length > 0) {
+        this.options.store.replaceFingerprintsForWorktree(
+          this.options.repoId,
+          worktree.id,
+          fingerprints
+        );
+      } else {
+        this.options.store.deleteFingerprintsForWorktree(
+          this.options.repoId,
+          worktree.id
+        );
+      }
+    }
+
+    for (const worktree of this.options.store.listWorktrees(this.options.repoId)) {
+      if (worktree.status !== "missing") continue;
+      this.options.store.deleteFingerprintsForWorktree(
+        this.options.repoId,
+        worktree.id
+      );
     }
 
     for (const conflict of result.conflicts) {

@@ -98,6 +98,117 @@ describe("Kiro MCP tool handlers", () => {
     store.close();
   });
 
+  it("filters checkpoint conflicts to live dirty fingerprints", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "kiro-mcp-live-filter-"));
+    const store = createKiroStore(path.join(dir, "kiro.sqlite"));
+    const handlers = createMcpToolHandlers({
+      repoId: "repo-1",
+      repoRoot: dir,
+      store
+    });
+    const join = handlers.join({
+      cwd: path.join(dir, "agent"),
+      agentKind: "codex",
+      displayName: "Codex A"
+    });
+    const peerWorktreeId = "peer-worktree";
+    store.upsertWorktree({
+      id: join.worktreeId,
+      repoId: "repo-1",
+      path: path.join(dir, "agent"),
+      branch: "agent",
+      headSha: "abc123",
+      dirty: true,
+      status: "active",
+      lastObservedAt: 1778000000000
+    });
+    store.upsertWorktree({
+      id: peerWorktreeId,
+      repoId: "repo-1",
+      path: path.join(dir, "peer"),
+      branch: "peer",
+      headSha: "abc123",
+      dirty: true,
+      status: "active",
+      lastObservedAt: 1778000000000
+    });
+    store.replaceFingerprintsForWorktree("repo-1", join.worktreeId, [
+      {
+        id: "fp-agent",
+        repoId: "repo-1",
+        worktreeId: join.worktreeId,
+        diffHash: "hash-agent",
+        createdAt: 1778000000000,
+        filesTouched: ["apps/company-brain/lib/types.ts"],
+        symbols: { added: [], modified: ["SourceCitation"], removed: [] },
+        surfaces: [],
+        semanticSummary: "SourceCitation changed.",
+        contractChanges: [],
+        confidence: 0.8,
+        source: "heuristic"
+      }
+    ]);
+    store.replaceFingerprintsForWorktree("repo-1", peerWorktreeId, [
+      {
+        id: "fp-peer",
+        repoId: "repo-1",
+        worktreeId: peerWorktreeId,
+        diffHash: "hash-peer",
+        createdAt: 1778000000000,
+        filesTouched: ["apps/company-brain/lib/types.ts"],
+        symbols: { added: [], modified: ["ConfidenceLabel"], removed: [] },
+        surfaces: [],
+        semanticSummary: "ConfidenceLabel changed.",
+        contractChanges: [],
+        confidence: 0.8,
+        source: "heuristic"
+      }
+    ]);
+    store.upsertConflict({
+      id: "live-conflict",
+      repoId: "repo-1",
+      status: "open",
+      risk: "high",
+      confidence: 0.86,
+      type: "type",
+      title: "types.ts overlap",
+      summary: "Two worktrees touched apps/company-brain/lib/types.ts.",
+      primarySurface: "apps/company-brain/lib/types.ts",
+      affectedWorktreeIds: [join.worktreeId, peerWorktreeId],
+      affectedSurfaces: ["apps/company-brain/lib/types.ts"],
+      evidence: ["Both worktrees changed apps/company-brain/lib/types.ts"],
+      riskReasons: [],
+      createdAt: 1778000000000,
+      updatedAt: 1778000000000
+    });
+    store.upsertConflict({
+      id: "stale-agents",
+      repoId: "repo-1",
+      status: "open",
+      risk: "high",
+      confidence: 0.86,
+      type: "type",
+      title: "AGENTS type overlap",
+      summary: "Two worktrees touched AGENTS.md.",
+      primarySurface: "AGENTS type",
+      affectedWorktreeIds: [join.worktreeId, "stale-worktree"],
+      affectedSurfaces: ["AGENTS type"],
+      evidence: ["Both worktrees changed AGENTS.md"],
+      riskReasons: [],
+      createdAt: 1778000000000,
+      updatedAt: 1778000000000
+    });
+
+    const checkpoint = handlers.checkpoint({ sessionId: join.sessionId });
+
+    expect(checkpoint.choices.map((choice) => choice.conflictId)).toEqual([
+      "live-conflict"
+    ]);
+    expect(checkpoint.notifications.join("\n")).toContain("types.ts overlap");
+    expect(checkpoint.notifications.join("\n")).not.toContain("AGENTS");
+    store.close();
+  });
+
   it("records one decision, delivers directions on checkpoint, and acknowledges receipt", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "kiro-mcp-decision-"));
     const store = createKiroStore(path.join(dir, "kiro.sqlite"));

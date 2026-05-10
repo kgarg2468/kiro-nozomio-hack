@@ -113,6 +113,52 @@ describe("KiroStore", () => {
     store.close();
   });
 
+  it("replaces and deletes fingerprints by worktree", () => {
+    const store = createKiroStore(":memory:");
+
+    store.replaceFingerprintsForWorktree("repo-1", "wt-a", [
+      {
+        id: "fp-a-1",
+        repoId: "repo-1",
+        worktreeId: "wt-a",
+        diffHash: "hash-a-1",
+        createdAt: 1778000000001,
+        filesTouched: ["src/types.ts"],
+        symbols: { added: [], modified: ["Task"], removed: [] },
+        surfaces: [],
+        semanticSummary: "Task changed.",
+        contractChanges: [],
+        confidence: 0.7,
+        source: "heuristic"
+      }
+    ]);
+    store.replaceFingerprintsForWorktree("repo-1", "wt-a", [
+      {
+        id: "fp-a-2",
+        repoId: "repo-1",
+        worktreeId: "wt-a",
+        diffHash: "hash-a-2",
+        createdAt: 1778000000002,
+        filesTouched: ["src/types.ts"],
+        symbols: { added: [], modified: ["SourceCitation"], removed: [] },
+        surfaces: [],
+        semanticSummary: "SourceCitation changed.",
+        contractChanges: [],
+        confidence: 0.7,
+        source: "heuristic"
+      }
+    ]);
+
+    expect(store.listFingerprints("repo-1").map((fingerprint) => fingerprint.id)).toEqual([
+      "fp-a-2"
+    ]);
+
+    store.deleteFingerprintsForWorktree("repo-1", "wt-a");
+
+    expect(store.listFingerprints("repo-1")).toEqual([]);
+    store.close();
+  });
+
   it("marks worktrees missing when git no longer reports them", async () => {
     const store = createKiroStore(":memory:");
 

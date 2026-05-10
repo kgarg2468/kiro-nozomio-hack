@@ -71,4 +71,62 @@ describe("AST-lite indexer", () => {
     expect(surfaces.map((surface) => surface.label)).toContain("Task DTO");
     expect(surfaces.map((surface) => surface.label)).toContain("Task API");
   });
+
+  it("uses diff hunks to scope TypeScript surfaces to touched exports", () => {
+    const content = [
+      'export type ConfidenceLabel = "Decided" | "Convention";',
+      "export interface SourceCitation {",
+      "  id: string;",
+      "  sourceType: string;",
+      "}",
+      "export interface AgentSession {",
+      "  id: string;",
+      "}"
+    ].join("\n");
+    const surfaces = extractSurfacesFromDiff({
+      files: [{ path: "apps/company-brain/lib/types.ts", content }],
+      diff: [
+        "diff --git a/apps/company-brain/lib/types.ts b/apps/company-brain/lib/types.ts",
+        "--- a/apps/company-brain/lib/types.ts",
+        "+++ b/apps/company-brain/lib/types.ts",
+        "@@ -1,6 +1,7 @@",
+        ' export type ConfidenceLabel = "Decided" | "Convention";',
+        " export interface SourceCitation {",
+        "   id: string;",
+        "+  priority: number;",
+        "   sourceType: string;",
+        " }",
+        " export interface AgentSession {"
+      ].join("\n")
+    });
+
+    expect(surfaces.map((surface) => surface.label)).toEqual([
+      "SourceCitation type"
+    ]);
+  });
+
+  it("does not report unrelated exports from a shared types file", () => {
+    const content = [
+      'export type ConfidenceLabel = "Decided" | "Convention";',
+      "export interface SourceCitation { id: string }",
+      "export interface AgentSession { id: string }"
+    ].join("\n");
+    const surfaces = extractSurfacesFromDiff({
+      files: [{ path: "apps/company-brain/lib/types.ts", content }],
+      diff: [
+        "diff --git a/apps/company-brain/lib/types.ts b/apps/company-brain/lib/types.ts",
+        "--- a/apps/company-brain/lib/types.ts",
+        "+++ b/apps/company-brain/lib/types.ts",
+        "@@ -1,3 +1,3 @@",
+        '-export type ConfidenceLabel = "Decided" | "Convention";',
+        '+export type ConfidenceLabel = "Final" | "Pattern";',
+        " export interface SourceCitation { id: string }",
+        " export interface AgentSession { id: string }"
+      ].join("\n")
+    });
+
+    expect(surfaces.map((surface) => surface.label)).toEqual([
+      "ConfidenceLabel type"
+    ]);
+  });
 });

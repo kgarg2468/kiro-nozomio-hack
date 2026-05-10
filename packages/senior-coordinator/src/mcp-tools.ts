@@ -441,14 +441,39 @@ function conflictsForSession(
   session: AgentSession
 ): KiroConflict[] {
   if (!session.worktreeId) return [];
+  const liveWorktreeIds = liveDirtyFingerprintWorktreeIds(store, repoId);
+  const shouldApplyLiveFilter =
+    store.listWorktrees(repoId).length > 0 || store.listFingerprints(repoId).length > 0;
   return store
     .listConflicts(repoId)
     .filter(
       (conflict) =>
         conflict.status === "open" &&
         session.worktreeId !== null &&
-        conflict.affectedWorktreeIds.includes(session.worktreeId)
+        conflict.affectedWorktreeIds.includes(session.worktreeId) &&
+        (!shouldApplyLiveFilter ||
+          conflict.affectedWorktreeIds.every((worktreeId) =>
+            liveWorktreeIds.has(worktreeId)
+          ))
     );
+}
+
+function liveDirtyFingerprintWorktreeIds(
+  store: KiroStore,
+  repoId: string
+): Set<string> {
+  const dirtyWorktreeIds = new Set(
+    store
+      .listWorktrees(repoId)
+      .filter((worktree) => worktree.status === "active" && worktree.dirty)
+      .map((worktree) => worktree.id)
+  );
+  return new Set(
+    store
+      .listFingerprints(repoId)
+      .filter((fingerprint) => dirtyWorktreeIds.has(fingerprint.worktreeId))
+      .map((fingerprint) => fingerprint.worktreeId)
+  );
 }
 
 function choicesForSession(
