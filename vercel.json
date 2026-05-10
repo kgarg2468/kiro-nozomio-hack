@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm build"
+  "buildCommand": "pnpm --filter @kiro/company-brain build",
+  "outputDirectory": "apps/company-brain/.next"
 }

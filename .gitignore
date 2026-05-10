@@ -1,12 +1,20 @@
 node_modules/
+target/
+dist/
 .next/
-*.tsbuildinfo
-.env.local
-.env*.local
+.vercel/
+.turbo/
+.cache/
+.DS_Store
 .kiro/
-
-.vercel
+*.tsbuildinfo
+.env
+.env.*
+*.local
+!.env.local.example
+!**/.env.local.example
 
 # SwiftPM / macOS app build artifacts
 apps/macos/**/.build/
 apps/macos/**/dist/
+.gstack/

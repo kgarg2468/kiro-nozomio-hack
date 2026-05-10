@@ -101,13 +101,21 @@ async function startDashboard(
 
 async function findDashboardDir(): Promise<string | null> {
   const cliDir = path.dirname(fileURLToPath(import.meta.url));
-  const candidate = path.resolve(cliDir, "../../..");
-  try {
-    await access(path.join(candidate, "package.json"));
-    return candidate;
-  } catch (_error) {
-    return null;
+  const repoRoot = path.resolve(cliDir, "../../..");
+  const candidates = [
+    path.join(repoRoot, "apps", "company-brain"),
+    repoRoot
+  ];
+  for (const candidate of candidates) {
+    try {
+      await access(path.join(candidate, "package.json"));
+      await access(path.join(candidate, "app"));
+      return candidate;
+    } catch (_error) {
+      continue;
+    }
   }
+  return null;
 }
 
 async function askSetupPrompts() {
