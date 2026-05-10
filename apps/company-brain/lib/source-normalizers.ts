@@ -16,29 +16,49 @@ export function normalizeProviderCitation(
   live: boolean
 ): SourceCitation {
   const record = isRecord(value) ? value : {};
+  const metadata = isRecord(record.metadata) ? record.metadata : {};
+  const providerSource = stringField(record, ["sourceType", "source_type", "source", "type", "kind"]);
+  const metadataSource = stringField(metadata, ["sourceType", "source_type", "source", "type", "kind"]);
   const sourceType = normalizeSourceType(
-    stringField(record, ["sourceType", "source_type", "type", "kind"]) ?? provider
+    isGenericVaultSource(providerSource)
+      ? (metadataSource ?? providerSource ?? provider)
+      : (providerSource ?? metadataSource ?? provider)
   );
   const title =
-    stringField(record, ["title", "name", "source", "url", "path"]) ??
+    stringField(record, ["title", "name", "path", "url"]) ??
+    stringField(metadata, ["title", "name", "path", "url"]) ??
+    stringField(record, ["resource_id", "resourceId"]) ??
+    stringField(record, ["source"]) ??
     `${provider} source ${index + 1}`;
   const snippet =
-    stringField(record, ["snippet", "summary", "content", "text", "body"]) ??
+    stringField(record, [
+      "snippet",
+      "summary",
+      "llm_summary",
+      "llmSummary",
+      "markdown",
+      "content",
+      "text",
+      "body"
+    ]) ??
+    stringField(metadata, ["snippet", "summary", "llm_summary", "llmSummary", "content", "text"]) ??
     (safeJson(value).slice(0, 500) ||
       "Source returned without readable body text.");
   return {
     id:
-      stringField(record, ["id", "source_id", "sourceId"]) ??
+      stringField(record, ["id", "source_id", "sourceId", "resource_id", "resourceId"]) ??
       `${provider}_${slugify(title)}_${index}`,
     sourceType,
     title,
-    url: stringField(record, ["url", "uri", "href"]),
+    url: stringField(record, ["url", "uri", "href"]) ?? stringField(metadata, ["url", "uri", "href"]),
     snippet,
     confidence: normalizeConfidence(
       stringField(record, ["confidence", "confidenceLabel", "label"])
     ),
     freshness:
       numberField(record, ["freshness", "freshness_ms", "updated_at", "updatedAt"]) ??
+      dateField(record, ["created_at", "createdAt", "indexed_at", "indexedAt", "last_modified", "lastModified"]) ??
+      dateField(metadata, ["created_at", "createdAt", "indexed_at", "indexedAt", "last_modified", "lastModified"]) ??
       Date.now(),
     live,
     decisionId: stringField(record, ["decisionId", "decision_id"]),
@@ -74,18 +94,25 @@ export function packetFromProviderResponse(input: {
     .map((value, index) =>
       normalizeProviderCitation(input.provider, value, index, input.live)
     );
+  const sourceCounts = countSourceTypes(citations);
 
   return {
     provider: input.provider,
     status: input.status,
     counts: {
-      messages: numberField(root, ["messages", "message_count", "messagesIndexed"]),
-      docs: numberField(root, ["docs", "document_count", "documentsIndexed"]),
-      prs: numberField(root, ["prs", "pull_request_count", "prsAnalyzed"]),
+      messages:
+        numberField(root, ["messages", "message_count", "messagesIndexed"]) ??
+        sourceCounts.messages,
+      docs:
+        numberField(root, ["docs", "document_count", "documentsIndexed"]) ??
+        sourceCounts.docs,
+      prs: numberField(root, ["prs", "pull_request_count", "prsAnalyzed"]) ?? sourceCounts.prs,
       repos: numberField(root, ["repos", "repository_count", "reposIndexed"]),
       crm: numberField(root, ["crm", "crm_count", "crmRecords"]),
-      emails: numberField(root, ["emails", "email_count", "emailsIndexed"]),
-      meetings: numberField(root, ["meetings", "meeting_count", "meetingsIndexed"]),
+      emails: numberField(root, ["emails", "email_count", "emailsIndexed"]) ?? sourceCounts.emails,
+      meetings:
+        numberField(root, ["meetings", "meeting_count", "meetingsIndexed"]) ??
+        sourceCounts.meetings,
       decisions: numberField(root, ["decisions", "decision_count", "decisionsExtracted"])
     },
     summary:
@@ -98,10 +125,11 @@ export function packetFromProviderResponse(input: {
 export function normalizeSourceType(value: string): SourceType {
   const lower = value.toLowerCase();
   if (lower.includes("hyper")) return "hyperspell";
+  if (lower.includes("vault") || lower.includes("collections")) return "hyperspell";
   if (lower.includes("crm") || lower.includes("salesforce") || lower.includes("hubspot")) return "crm";
   if (lower.includes("drive")) return "drive";
-  if (lower.includes("gmail") || lower.includes("email")) return "gmail";
-  if (lower.includes("meeting") || lower.includes("granola")) return "meeting";
+  if (lower.includes("gmail") || lower.includes("email") || lower.includes("mail")) return "gmail";
+  if (lower.includes("meeting") || lower.includes("granola") || lower.includes("calendar")) return "meeting";
   if (lower.includes("nia") || lower.includes("code")) return "nia";
   if (lower.includes("github")) return "github";
   if (lower.includes("slack")) return "slack";
@@ -157,8 +185,22 @@ function numberField(record: UnknownRecord, keys: string[]) {
   }
 }
 
+function dateField(record: UnknownRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value !== "string" || !value.trim()) continue;
+    const timestamp = Date.parse(value);
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+}
+
 function isRecord(value: unknown): value is UnknownRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isGenericVaultSource(value: string | undefined) {
+  const lower = value?.toLowerCase() ?? "";
+  return lower === "vault" || lower === "collections";
 }
 
 function safeJson(value: unknown) {
@@ -171,4 +213,17 @@ function safeJson(value: unknown) {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function countSourceTypes(citations: SourceCitation[]) {
+  const count = (types: SourceType[]) =>
+    citations.filter((citation) => types.includes(citation.sourceType)).length || undefined;
+
+  return {
+    messages: count(["slack"]),
+    docs: count(["notion", "drive", "fixture"]),
+    prs: count(["pr", "github"]),
+    emails: count(["gmail"]),
+    meetings: count(["meeting", "transcript"])
+  };
 }
