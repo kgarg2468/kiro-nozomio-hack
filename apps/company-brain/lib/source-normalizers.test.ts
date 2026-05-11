@@ -67,13 +67,64 @@ describe("source normalization", () => {
     expect(packet.citations[0]?.sourceType).toBe("slack");
   });
 
+  it("normalizes the Hyperspell query response shape", () => {
+    const packet = packetFromProviderResponse({
+      provider: "hyperspell",
+      status: "connected",
+      live: true,
+      fallbackSummary: "fallback",
+      response: {
+        answer: "Company memory answer",
+        documents: [
+          {
+            source: "github",
+            resource_id: "slack-thread-1",
+            metadata: {
+              path: "CLAUDE.original.md",
+              url: "https://slack.example/thread",
+              indexed_at: "2026-05-09T20:00:00Z"
+            },
+            score: 0.88
+          },
+          {
+            source: "vault",
+            resource_id: "manual-transcript-1",
+            title: "Uploaded transcript",
+            metadata: {
+              source: "manual_transcript",
+              summary: "Manual transcript says retries need jitter."
+            }
+          }
+        ]
+      }
+    });
+
+    expect(packet.summary).toBe("Company memory answer");
+    expect(packet.counts.prs).toBe(1);
+    expect(packet.counts.meetings).toBe(1);
+    expect(packet.citations[0]).toMatchObject({
+      id: "slack-thread-1",
+      sourceType: "github",
+      title: "CLAUDE.original.md",
+      url: "https://slack.example/thread"
+    });
+    expect(packet.citations[1]).toMatchObject({
+      id: "manual-transcript-1",
+      sourceType: "transcript",
+      snippet: "Manual transcript says retries need jitter."
+    });
+  });
+
   it("normalizes source types and confidence labels conservatively", () => {
     expect(normalizeSourceType("pull_request")).toBe("pr");
     expect(normalizeSourceType("Codebase search")).toBe("nia");
     expect(normalizeSourceType("Salesforce CRM")).toBe("crm");
     expect(normalizeSourceType("Gmail thread")).toBe("gmail");
+    expect(normalizeSourceType("google_mail")).toBe("gmail");
     expect(normalizeSourceType("Granola meeting")).toBe("meeting");
+    expect(normalizeSourceType("google_calendar")).toBe("meeting");
     expect(normalizeSourceType("Drive doc")).toBe("drive");
+    expect(normalizeSourceType("vault")).toBe("hyperspell");
     expect(normalizeSourceType("call transcript")).toBe("transcript");
     expect(normalizeConfidence("old stale thread")).toBe("Stale");
     expect(normalizeConfidence(undefined)).toBe("Decided");
