@@ -18,3 +18,11 @@ dist/
 apps/macos/**/.build/
 apps/macos/**/dist/
 .gstack/
+
+# Internal archive — not shared
+archive/
+
+# Markdown files (except READMEs)
+*.md
+!README.md
+!**/README.md
